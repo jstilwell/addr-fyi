@@ -1,14 +1,18 @@
 import type { RequestHandler } from './$types';
 import { negotiate } from '$lib/server/respond';
+import { guardTraceHost } from '$lib/server/ssrf-guard';
 
 /**
  * Timed HTTP probes to a host from the Cloudflare edge serving this request.
  * Not a traceroute (Workers have no ICMP/raw sockets) — but paired with the
  * browser's probes to the edge, it brackets which path segment is slow.
- * HTTPS only, no path, and the body is discarded, so it can't proxy content.
+ *
+ * SSRF surface: the host comes from the user, so guardTraceHost restricts it
+ * to a public, DNS-named HTTPS host on port 443 and rejects anything that
+ * resolves to private/reserved space. HTTPS only, no path, body discarded —
+ * it cannot be used as a content proxy or to reach internal services.
  */
 
-const HOST_PATTERN = /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:\d{1,5})?$/i;
 const ATTEMPTS = 3;
 
 type Attempt = { ms: number; status: number | null };
@@ -20,12 +24,12 @@ const median = (values: number[]): number => {
 };
 
 export const GET: RequestHandler = async ({ params, request, fetch, platform }) => {
-	const host = params.host.trim().toLowerCase();
-	if (!HOST_PATTERN.test(host) || !host.replace(/:\d+$/, '').includes('.')) {
-		const error = 'invalid host (use a hostname like example.com, optionally with :port)';
-		return negotiate(request, { error }, `Error: ${error}\n`, 400);
+	const guard = await guardTraceHost(fetch, params.host);
+	if (!guard.ok) {
+		return negotiate(request, { error: guard.error }, `Error: ${guard.error}\n`, guard.status);
 	}
 
+	const host = guard.host;
 	const url = `https://${host}/`;
 	const colo = (platform?.cf?.colo as string) ?? 'edge';
 	const attempts: Attempt[] = [];
