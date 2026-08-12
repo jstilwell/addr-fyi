@@ -1,7 +1,9 @@
 import type { PageServerLoad } from './$types';
+import { getClientInfo } from '$lib/server/client-info';
 
-export const load: PageServerLoad = ({ getClientAddress }) => {
+export const load: PageServerLoad = ({ request, platform, getClientAddress }) => {
 	return {
-		ip: getClientAddress()
+		client: getClientInfo(request, platform?.cf, getClientAddress()),
+		headers: Object.fromEntries(request.headers)
 	};
 };
