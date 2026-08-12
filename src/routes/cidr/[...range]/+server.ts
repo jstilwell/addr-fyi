@@ -11,5 +11,5 @@ export const GET: RequestHandler = ({ params, request }) => {
 		return negotiate(request, { error }, `Error: ${error}\n`, 400);
 	}
 
-	return negotiate(request, info, formatCidr(info), 200, 'public, max-age=86400');
+	return negotiate(request, info, formatCidr(info), 200, 'private, max-age=86400');
 };
