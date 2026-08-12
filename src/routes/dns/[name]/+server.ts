@@ -1,9 +1,33 @@
 import type { RequestHandler } from './$types';
-import { dohQuery, isRecordType, RECORD_TYPES } from '$lib/server/dns';
+import { dohQuery, isRecordType, ptrLookup, RECORD_TYPES, toArpaName } from '$lib/server/dns';
 import { negotiate } from '$lib/server/respond';
 
-/** Forward DNS lookup via DNS-over-HTTPS. Default A; override with ?type=MX etc. */
+/**
+ * DNS lookup via DNS-over-HTTPS. Detects what it was given: an IP address
+ * gets a reverse (PTR) lookup, a name gets forward records (default A,
+ * override with ?type=MX etc).
+ */
 export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
+	if (toArpaName(params.name)) {
+		const result = await ptrLookup(fetch, params.name);
+		if (!result.ok) {
+			return negotiate(request, { error: result.error }, `Error: ${result.error}\n`, result.status);
+		}
+
+		const plaintext =
+			result.hostnames.length === 0
+				? `No PTR record for ${params.name}\n`
+				: result.hostnames.join('\n') + '\n';
+
+		return negotiate(
+			request,
+			{ ip: params.name, ptr: result.hostnames },
+			plaintext,
+			200,
+			'private, max-age=300'
+		);
+	}
+
 	const type = (url.searchParams.get('type') ?? 'A').toUpperCase();
 	if (!isRecordType(type)) {
 		const error = `unsupported record type (use one of: ${RECORD_TYPES.join(', ')})`;

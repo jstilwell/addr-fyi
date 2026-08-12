@@ -96,6 +96,20 @@ export const dohQuery = async (
 	};
 };
 
+export type PtrResult =
+	{ ok: true; hostnames: string[] } | { ok: false; error: string; status: number };
+
+/** Reverse (PTR) lookup for an IPv4 or IPv6 address. */
+export const ptrLookup = async (fetcher: typeof fetch, ip: string): Promise<PtrResult> => {
+	const arpaName = toArpaName(ip);
+	if (!arpaName) return { ok: false, error: 'invalid IP address', status: 400 };
+
+	const result = await dohQuery(fetcher, arpaName, 'PTR');
+	if (!result.ok) return result;
+
+	return { ok: true, hostnames: result.answers.map((a) => a.data.replace(/\.$/, '')) };
+};
+
 /** Convert an IP address to its reverse-lookup (.arpa) name, or null if invalid. */
 export const toArpaName = (ip: string): string | null => {
 	if (ip.includes(':')) {

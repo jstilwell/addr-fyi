@@ -29,6 +29,7 @@ export const PRIVACY: LegalDoc = {
 			heading: 'Lookups you run',
 			body: [
 				'Queries you submit to the lookup tools are forwarded to third-party services to be answered: geolocation lookups to ip-api.com, WHOIS lookups to the authoritative RDAP registry (via rdap.org), and DNS lookups to Cloudflare DNS-over-HTTPS. Only the query itself (the IP, domain, or ASN you typed) is forwarded — not your identity.',
+				'The weather tool sends the approximate coordinates derived from your IP by Cloudflare to Open-Meteo (and, for US locations, to the National Weather Service for alerts). The trace tool asks the Cloudflare edge to time an HTTP request to the host you specify.',
 				'Successful lookup results are cached at the Cloudflare edge for a few hours so repeated queries are fast; the cache stores the answer, not who asked.'
 			]
 		},
