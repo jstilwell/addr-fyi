@@ -65,7 +65,7 @@
 			id: 'whois',
 			label: 'whois',
 			icon: FileSearch,
-			placeholder: 'example.com',
+			placeholder: 'example.com, 8.8.8.8, or AS13335',
 			path: (q) => `/whois/${encodeURIComponent(q)}`
 		},
 		{
@@ -101,6 +101,14 @@
 		/^\d{1,3}(\.\d{1,3}){3}$/.test(inputs.dns.trim()) || inputs.dns.includes(':')
 	);
 
+	// The visitor's own IPv4, if they have one, used to pre-fill example queries.
+	// IPv6 visitors (and dev's ::1) fall back to the static placeholders.
+	const clientIpv4 = $derived(
+		/^\d{1,3}(\.\d{1,3}){3}$/.test(data.client.ip) ? data.client.ip : null
+	);
+	// The /24 that contains the visitor's IPv4, e.g. 128.143.20.111 -> 128.143.20.0/24.
+	const clientCidr24 = $derived(clientIpv4 ? clientIpv4.replace(/\.\d+$/, '.0') + '/24' : null);
+
 	async function run(tool: Tool) {
 		const query = inputs[tool.id].trim();
 		if ((query === '' && (tool.requiresInput ?? true)) || running[tool.id]) return;
@@ -131,11 +139,17 @@
 	}
 
 	// addr.fyi/find/1.2.3.4 in a browser redirects here with ?q= — run it immediately.
+	// Otherwise pre-fill the IP-shaped tools with the visitor's own address so
+	// there's a real, relevant example already in the field.
 	onMount(() => {
 		const q = page.url.searchParams.get('q');
 		if (q) {
 			inputs.lookup = q;
 			void run(tools[0]);
+		} else if (clientIpv4) {
+			inputs.lookup = clientIpv4;
+			inputs.dns = clientIpv4;
+			inputs.cidr = clientCidr24 ?? '';
 		}
 	});
 
@@ -148,6 +162,19 @@
 			.map(([name, value]) => `${name}: ${value}`)
 			.join('\n')
 	);
+
+	// The three things whois (RDAP) can resolve — shown as runnable examples in
+	// the whois tab so people see the full range without guessing.
+	const whoisExamples = [
+		{ query: 'example.com', kind: 'a domain' },
+		{ query: '8.8.8.8', kind: 'an IP address' },
+		{ query: 'AS13335', kind: 'an ASN' }
+	];
+
+	function runWhoisExample(query: string) {
+		inputs.whois = query;
+		void run(tools.find((t) => t.id === 'whois')!);
+	}
 
 	const endpoints = [
 		['/', 'your IP address'],
@@ -267,6 +294,24 @@
 						</Button>
 					</form>
 
+					{#if tool.id === 'whois'}
+						<div class="flex flex-col gap-1.5 text-sm">
+							<p class="text-muted-foreground text-xs">
+								whois accepts a domain, an IP address, or an ASN:
+							</p>
+							{#each whoisExamples as example (example.query)}
+								<button
+									type="button"
+									class="text-muted-foreground hover:text-foreground text-left transition-colors"
+									onclick={() => runWhoisExample(example.query)}
+								>
+									<span class="text-primary select-none">$&nbsp;</span>curl {host}/whois/{example.query}
+									<span class="text-muted-foreground/70"># {example.kind}</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
+
 					{#if commands[tool.id]}
 						<div class="flex flex-col gap-1 text-sm">
 							<p class="text-muted-foreground">
@@ -291,7 +336,7 @@
 										: ''}">{outputs[tool.id] || ' '}</pre>
 							{/if}
 						</div>
-					{:else}
+					{:else if tool.id !== 'whois'}
 						<p class="text-muted-foreground text-sm">
 							<span class="text-primary select-none">$&nbsp;</span>curl {host}{tool.path(
 								tool.placeholder
