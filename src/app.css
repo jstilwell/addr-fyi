@@ -3,43 +3,80 @@
 @import 'shadcn-svelte/tailwind.css';
 @import '@fontsource-variable/jetbrains-mono';
 
+@custom-variant dark (&:is(.dark *));
+
 /*
- * addr.fyi — amber-phosphor terminal theme.
- * Single committed dark look: tokens live on :root, no light variant.
+ * addr.fyi — neutral IT-tool theme. Cool-tinted slate grays with a muted
+ * steel-blue accent. Light mode is the :root default; .dark on <html> flips
+ * to the dark variant. Hue 250 = the cool tint shared across neutrals.
  */
 :root {
-	--background: oklch(0.16 0.01 85);
-	--foreground: oklch(0.9 0.025 90);
-	--card: oklch(0.2 0.012 85);
-	--card-foreground: oklch(0.9 0.025 90);
-	--popover: oklch(0.2 0.012 85);
-	--popover-foreground: oklch(0.9 0.025 90);
-	--primary: oklch(0.8 0.16 75);
-	--primary-foreground: oklch(0.16 0.01 85);
-	--secondary: oklch(0.26 0.015 85);
-	--secondary-foreground: oklch(0.9 0.025 90);
-	--muted: oklch(0.24 0.013 85);
-	--muted-foreground: oklch(0.62 0.02 85);
-	--accent: oklch(0.26 0.02 80);
-	--accent-foreground: oklch(0.9 0.025 90);
-	--destructive: oklch(0.62 0.19 25);
-	--border: oklch(0.3 0.02 85);
-	--input: oklch(0.3 0.02 85);
-	--ring: oklch(0.8 0.16 75);
-	--chart-1: oklch(0.8 0.16 75);
-	--chart-2: oklch(0.62 0.02 85);
-	--chart-3: oklch(0.44 0.015 85);
-	--chart-4: oklch(0.37 0.013 85);
-	--chart-5: oklch(0.27 0.01 85);
-	--radius: 0.25rem;
-	--sidebar: oklch(0.2 0.012 85);
-	--sidebar-foreground: oklch(0.9 0.025 90);
-	--sidebar-primary: oklch(0.8 0.16 75);
-	--sidebar-primary-foreground: oklch(0.16 0.01 85);
-	--sidebar-accent: oklch(0.26 0.02 80);
-	--sidebar-accent-foreground: oklch(0.9 0.025 90);
-	--sidebar-border: oklch(0.3 0.02 85);
-	--sidebar-ring: oklch(0.8 0.16 75);
+	--background: oklch(0.99 0.002 250);
+	--foreground: oklch(0.24 0.015 255);
+	--card: oklch(1 0 0);
+	--card-foreground: oklch(0.24 0.015 255);
+	--popover: oklch(1 0 0);
+	--popover-foreground: oklch(0.24 0.015 255);
+	--primary: oklch(0.52 0.08 245);
+	--primary-foreground: oklch(0.99 0.002 250);
+	--secondary: oklch(0.96 0.004 250);
+	--secondary-foreground: oklch(0.3 0.015 255);
+	--muted: oklch(0.96 0.004 250);
+	--muted-foreground: oklch(0.52 0.012 255);
+	--accent: oklch(0.95 0.008 245);
+	--accent-foreground: oklch(0.3 0.015 255);
+	--destructive: oklch(0.58 0.2 25);
+	--border: oklch(0.9 0.005 250);
+	--input: oklch(0.9 0.005 250);
+	--ring: oklch(0.52 0.08 245);
+	--chart-1: oklch(0.52 0.08 245);
+	--chart-2: oklch(0.6 0.05 220);
+	--chart-3: oklch(0.55 0.06 280);
+	--chart-4: oklch(0.65 0.04 200);
+	--chart-5: oklch(0.5 0.02 255);
+	--radius: 0.375rem;
+	--sidebar: oklch(0.98 0.003 250);
+	--sidebar-foreground: oklch(0.24 0.015 255);
+	--sidebar-primary: oklch(0.52 0.08 245);
+	--sidebar-primary-foreground: oklch(0.99 0.002 250);
+	--sidebar-accent: oklch(0.95 0.008 245);
+	--sidebar-accent-foreground: oklch(0.3 0.015 255);
+	--sidebar-border: oklch(0.9 0.005 250);
+	--sidebar-ring: oklch(0.52 0.08 245);
+}
+
+.dark {
+	--background: oklch(0.19 0.012 255);
+	--foreground: oklch(0.92 0.006 250);
+	--card: oklch(0.23 0.014 255);
+	--card-foreground: oklch(0.92 0.006 250);
+	--popover: oklch(0.23 0.014 255);
+	--popover-foreground: oklch(0.92 0.006 250);
+	--primary: oklch(0.68 0.09 240);
+	--primary-foreground: oklch(0.19 0.012 255);
+	--secondary: oklch(0.28 0.014 255);
+	--secondary-foreground: oklch(0.92 0.006 250);
+	--muted: oklch(0.27 0.013 255);
+	--muted-foreground: oklch(0.68 0.01 250);
+	--accent: oklch(0.31 0.018 245);
+	--accent-foreground: oklch(0.92 0.006 250);
+	--destructive: oklch(0.66 0.19 25);
+	--border: oklch(0.32 0.012 255);
+	--input: oklch(0.34 0.012 255);
+	--ring: oklch(0.68 0.09 240);
+	--chart-1: oklch(0.68 0.09 240);
+	--chart-2: oklch(0.65 0.06 220);
+	--chart-3: oklch(0.62 0.07 280);
+	--chart-4: oklch(0.7 0.05 200);
+	--chart-5: oklch(0.6 0.02 255);
+	--sidebar: oklch(0.23 0.014 255);
+	--sidebar-foreground: oklch(0.92 0.006 250);
+	--sidebar-primary: oklch(0.68 0.09 240);
+	--sidebar-primary-foreground: oklch(0.19 0.012 255);
+	--sidebar-accent: oklch(0.31 0.018 245);
+	--sidebar-accent-foreground: oklch(0.92 0.006 250);
+	--sidebar-border: oklch(0.32 0.012 255);
+	--sidebar-ring: oklch(0.68 0.09 240);
 }
 
 @theme inline {
@@ -114,11 +151,6 @@
 	.cursor-blink {
 		animation: none;
 	}
-}
-
-/* Soft phosphor glow for the hero readout. */
-.phosphor {
-	text-shadow: 0 0 24px oklch(0.8 0.16 75 / 35%);
 }
 
 /* Horizontally scrollable but with no visible scrollbar — used by the tab row,
