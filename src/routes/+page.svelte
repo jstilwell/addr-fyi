@@ -176,6 +176,12 @@
 		void run(tools.find((t) => t.id === 'whois')!);
 	}
 
+	// Clicking the visitor's own AS badge jumps to the whois tab and looks it up.
+	function lookupAsn(asn: number) {
+		activeTab = 'whois';
+		runWhoisExample(`AS${asn}`);
+	}
+
 	const endpoints = [
 		['/', 'your IP address'],
 		['/geo', 'your IP + geolocation (from the edge, no lookup)'],
@@ -220,10 +226,15 @@
 			</Badge>
 		{/if}
 		{#if data.client.asn}
-			<Badge variant="outline" class="text-muted-foreground gap-1.5 font-normal">
-				<Network class="size-3.5" aria-hidden="true" />AS{data.client.asn}
-				{data.client.org}
-			</Badge>
+			<button type="button" onclick={() => lookupAsn(data.client.asn!)} title="Look up this ASN">
+				<Badge
+					variant="outline"
+					class="text-muted-foreground hover:text-foreground hover:border-foreground/30 gap-1.5 font-normal transition-colors"
+				>
+					<Network class="size-3.5" aria-hidden="true" />AS{data.client.asn}
+					{data.client.org}
+				</Badge>
+			</button>
 		{/if}
 		{#if data.client.colo}
 			<Badge variant="outline" class="text-muted-foreground font-normal">
