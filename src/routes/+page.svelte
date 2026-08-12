@@ -290,7 +290,7 @@
 		}
 	}}
 >
-	<Tabs.List class="w-full justify-start overflow-x-auto">
+	<Tabs.List class="no-scrollbar w-full justify-start overflow-x-auto overflow-y-hidden">
 		{#each tools as tool (tool.id)}
 			<Tabs.Trigger value={tool.id} class="gap-1.5">
 				<tool.icon class="size-3.5" aria-hidden="true" />{tool.label}

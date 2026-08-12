@@ -120,3 +120,12 @@
 .phosphor {
 	text-shadow: 0 0 24px oklch(0.8 0.16 75 / 35%);
 }
+
+/* Horizontally scrollable but with no visible scrollbar — used by the tab row,
+   which overflows on narrow screens and scrolls by swipe/drag instead. */
+.no-scrollbar {
+	scrollbar-width: none; /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+	display: none; /* WebKit */
+}
