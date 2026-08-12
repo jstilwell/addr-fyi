@@ -54,19 +54,19 @@
 				`/dns/${encodeURIComponent(q)}${dnsInputIsIp || dnsType === 'A' ? '' : `?type=${dnsType}`}`
 		},
 		{
+			id: 'whois',
+			label: 'whois',
+			icon: FileSearch,
+			placeholder: 'example.com, 8.8.8.8, or AS13335',
+			path: (q) => `/whois/${encodeURIComponent(q)}`
+		},
+		{
 			id: 'weather',
 			label: 'weather',
 			icon: CloudSun,
 			placeholder: '',
 			requiresInput: false,
 			path: () => '/weather'
-		},
-		{
-			id: 'whois',
-			label: 'whois',
-			icon: FileSearch,
-			placeholder: 'example.com, 8.8.8.8, or AS13335',
-			path: (q) => `/whois/${encodeURIComponent(q)}`
 		},
 		{
 			id: 'cidr',
