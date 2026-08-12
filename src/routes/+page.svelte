@@ -109,6 +109,16 @@
 	// The /24 that contains the visitor's IPv4, e.g. 128.143.20.111 -> 128.143.20.0/24.
 	const clientCidr24 = $derived(clientIpv4 ? clientIpv4.replace(/\.\d+$/, '.0') + '/24' : null);
 
+	// Label the hero eyebrow with the actual address family. Colons mean IPv6;
+	// a valid dotted quad means IPv4; anything else stays generic.
+	const ipVersionLabel = $derived(
+		data.client.ip.includes(':')
+			? 'your IPv6 address'
+			: clientIpv4
+				? 'your IPv4 address'
+				: 'your address'
+	);
+
 	async function run(tool: Tool) {
 		const query = inputs[tool.id].trim();
 		if ((query === '' && (tool.requiresInput ?? true)) || running[tool.id]) return;
@@ -214,7 +224,7 @@
 
 <!-- Hero: the same answer curl gets, rendered. -->
 <section aria-label="Your IP address">
-	<p class="text-muted-foreground mb-3 text-xs tracking-[0.25em] uppercase">your address</p>
+	<p class="text-muted-foreground mb-3 text-xs tracking-[0.25em] uppercase">{ipVersionLabel}</p>
 	<button
 		class="group flex flex-wrap items-center gap-x-4 gap-y-2 text-left"
 		onclick={copyIp}
