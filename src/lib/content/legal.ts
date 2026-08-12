@@ -35,7 +35,7 @@ export const PRIVACY: LegalDoc = {
 		},
 		{
 			heading: 'Contact',
-			body: ['Questions? Email contact@addr.fyi.']
+			body: ['Questions? Email jesse@stilwe.com.']
 		}
 	]
 };
@@ -70,7 +70,7 @@ export const TERMS: LegalDoc = {
 		},
 		{
 			heading: 'Contact',
-			body: ['Questions? Email contact@addr.fyi.']
+			body: ['Questions? Email jesse@stilwe.com.']
 		}
 	]
 };

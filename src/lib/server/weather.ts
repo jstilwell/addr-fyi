@@ -154,7 +154,7 @@ const fetchAlerts = async (
 			// api.weather.gov requires a User-Agent identifying the caller.
 			headers: {
 				accept: 'application/geo+json',
-				'user-agent': 'addr.fyi/1.0 (contact@addr.fyi)'
+				'user-agent': 'addr.fyi/1.0 (jesse@stilwe.com)'
 			},
 			signal: AbortSignal.timeout(6000)
 		});
