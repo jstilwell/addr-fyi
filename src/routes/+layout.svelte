@@ -25,7 +25,7 @@
 </svelte:head>
 
 <div class="mx-auto flex min-h-svh w-full max-w-3xl flex-col gap-10 px-4 py-8 sm:px-6 sm:py-12">
-	<header class="flex items-center justify-between">
+	<header class="flex items-center">
 		<a
 			href={resolve('/')}
 			class="flex items-center gap-2 text-lg font-bold tracking-tight"
@@ -33,12 +33,6 @@
 		>
 			<Terminal class="text-primary size-5" aria-hidden="true" />
 			<span>addr.fyi</span><span class="cursor-blink text-primary -ml-1">▊</span>
-		</a>
-		<a
-			href="https://github.com/jstilwell/addr-fyi"
-			class="text-muted-foreground hover:text-foreground text-sm transition-colors"
-		>
-			[src]
 		</a>
 	</header>
 
