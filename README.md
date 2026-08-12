@@ -9,20 +9,19 @@ gets JSON.
 
 ## Endpoints
 
-| Endpoint               | Returns                                                     |
-| ---------------------- | ----------------------------------------------------------- |
-| `/`                    | your IP address                                             |
-| `/geo`                 | your IP + geolocation, straight from the edge (no lookup)   |
-| `/json`                | everything we know about you, as JSON                       |
-| `/find/{ip}`           | geolocation, ISP, ASN, rDNS, proxy/hosting flags for any IP |
-| `/dns/{query}?type=MX` | DNS via DoH — names get records, IPs get a PTR lookup       |
-| `/rdns/{ip}`           | reverse DNS (PTR) for IPv4 or IPv6                          |
-| `/weather`             | weather + alerts at your IP's location (Open-Meteo / NWS)   |
-| `/whois/{query}`       | registration data via RDAP — accepts IP, domain, or ASN     |
-| `/cidr/{range}`        | subnet calculator (IPv4 + IPv6), e.g. `/cidr/10.0.0.0/24`   |
-| `/headers`             | your request headers, echoed back                           |
-| `/ua`                  | your user agent                                             |
-| `/health`              | liveness check                                              |
+| Endpoint               | Returns                                                         |
+| ---------------------- | --------------------------------------------------------------- |
+| `/`                    | your IP address                                                 |
+| `/geo`                 | your IP + geolocation, straight from the edge (no lookup)       |
+| `/json`                | everything we know about you, as JSON                           |
+| `/find/{ip}`           | geolocation, ISP, ASN, rDNS, proxy/hosting flags for any IP     |
+| `/dns/{query}?type=MX` | DNS via DoH — names get records, IPs get a reverse (PTR) lookup |
+| `/weather`             | weather + alerts at your IP's location (Open-Meteo / NWS)       |
+| `/whois/{query}`       | registration data via RDAP — accepts IP, domain, or ASN         |
+| `/cidr/{range}`        | subnet calculator (IPv4 + IPv6), e.g. `/cidr/10.0.0.0/24`       |
+| `/headers`             | your request headers, echoed back                               |
+| `/ua`                  | your user agent                                                 |
+| `/health`              | liveness check                                                  |
 
 ```sh
 curl addr.fyi
@@ -41,8 +40,8 @@ curl -H 'Accept: application/json' addr.fyi/geo
 - **Arbitrary lookups are cached.** `/find/{ip}` proxies ip-api.com and caches
   successful results in `caches.default` for 24h, keeping latency low and
   staying under the upstream rate limit.
-- **DNS tools use DoH.** `/dns` and `/rdns` query Cloudflare's
-  `cloudflare-dns.com/dns-query` resolver.
+- **DNS uses DoH.** `/dns` queries Cloudflare's `cloudflare-dns.com/dns-query`
+  resolver; an IP argument is reversed to a PTR lookup automatically.
 - **WHOIS is RDAP.** `/whois` bootstraps through rdap.org to the authoritative
   registry (ARIN/RIPE/Verisign/…) and caches results for 6h. gTLDs all support
   RDAP; some ccTLDs don't and will return "no record found".
