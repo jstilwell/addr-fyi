@@ -18,7 +18,6 @@
 	import Globe from '@lucide/svelte/icons/globe';
 	import MapPin from '@lucide/svelte/icons/map-pin';
 	import Network from '@lucide/svelte/icons/network';
-	import Route from '@lucide/svelte/icons/route';
 	import Search from '@lucide/svelte/icons/search';
 	import Terminal from '@lucide/svelte/icons/terminal';
 
@@ -131,78 +130,6 @@
 		setTimeout(() => (copied = false), 1500);
 	}
 
-	// Trace tool: browser→edge and edge→target probes, run simultaneously so
-	// the two columns bracket which path segment is slow.
-	let traceTarget = $state('');
-	let traceStarted = $state(false);
-	let browserTrace = $state('');
-	let browserTraceRunning = $state(false);
-	let edgeTrace = $state('');
-	let edgeTraceRunning = $state(false);
-	let edgeTraceFailed = $state(false);
-
-	const medianOf = (values: number[]) => {
-		const sorted = [...values].sort((a, b) => a - b);
-		const mid = Math.floor(sorted.length / 2);
-		return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
-	};
-
-	async function probeEdgeFromBrowser() {
-		browserTraceRunning = true;
-		const samples: number[] = [];
-		for (let i = 0; i < 4; i++) {
-			const started = performance.now();
-			try {
-				await fetch(`/health?probe=${i}`, { cache: 'no-store' });
-				samples.push(Math.round(performance.now() - started));
-			} catch {
-				// A failed sample means the edge is unreachable; report what we have.
-			}
-		}
-		const lines = [`Browser probe: you → ${data.client.colo ?? 'edge'} (this site)`];
-		if (data.client.tcpRtt !== null) {
-			lines.push(`TCP RTT, edge-measured: ${data.client.tcpRtt} ms`);
-		}
-		lines.push(...samples.map((ms, i) => `#${i + 1}: ${ms} ms`));
-		lines.push(
-			samples.length === 0
-				? 'Result: edge unreachable'
-				: `Fastest: ${Math.min(...samples)} ms | Median: ${medianOf(samples)} ms`
-		);
-		browserTrace = lines.join('\n');
-		browserTraceRunning = false;
-	}
-
-	async function probeTargetFromEdge(host: string) {
-		edgeTraceRunning = true;
-		edgeTraceFailed = false;
-		try {
-			const response = await fetch(`/trace/${encodeURIComponent(host)}`);
-			edgeTrace = (await response.text()).trimEnd();
-			edgeTraceFailed = !response.ok;
-		} catch {
-			edgeTrace = 'Error: request failed';
-			edgeTraceFailed = true;
-		} finally {
-			edgeTraceRunning = false;
-		}
-	}
-
-	function runTrace() {
-		const host = traceTarget
-			.trim()
-			.replace(/^https?:\/\//, '')
-			.replace(/\/.*$/, '');
-		if (!host || browserTraceRunning || edgeTraceRunning) return;
-		traceTarget = host;
-		traceStarted = true;
-		browserTrace = '';
-		edgeTrace = '';
-		// Deliberately not awaited together — each column fills in as it lands.
-		void probeEdgeFromBrowser();
-		void probeTargetFromEdge(host);
-	}
-
 	// addr.fyi/find/1.2.3.4 in a browser redirects here with ?q= — run it immediately.
 	onMount(() => {
 		const q = page.url.searchParams.get('q');
@@ -232,7 +159,6 @@
 		['/weather', "weather + alerts at your IP's location"],
 		['/whois/{ip|domain|asn}', 'registration data via RDAP'],
 		['/cidr/{range}', 'subnet calculator (IPv4 + IPv6)'],
-		['/trace/{host}', 'timed HTTP probes from the edge'],
 		['/headers', 'your request headers, echoed back'],
 		['/ua', 'your user agent'],
 		['/health', 'liveness check']
@@ -249,7 +175,7 @@
 		onclick={copyIp}
 		title="Copy to clipboard"
 	>
-		<span class="phosphor text-primary text-4xl font-bold break-all sm:text-5xl">
+		<span class="text-primary text-4xl font-bold break-all sm:text-5xl">
 			{data.client.ip}
 		</span>
 		<span class="text-muted-foreground group-hover:text-foreground transition-colors">
@@ -296,9 +222,6 @@
 				<tool.icon class="size-3.5" aria-hidden="true" />{tool.label}
 			</Tabs.Trigger>
 		{/each}
-		<Tabs.Trigger value="trace" class="gap-1.5">
-			<Route class="size-3.5" aria-hidden="true" />trace
-		</Tabs.Trigger>
 		<Tabs.Trigger value="headers" class="gap-1.5">
 			<FileText class="size-3.5" aria-hidden="true" />headers
 		</Tabs.Trigger>
@@ -379,101 +302,6 @@
 			</Card.Root>
 		</Tabs.Content>
 	{/each}
-
-	<Tabs.Content value="trace">
-		<Card.Root>
-			<Card.Content class="flex flex-col gap-4">
-				<form
-					class="flex flex-col gap-2 sm:flex-row"
-					onsubmit={(e) => {
-						e.preventDefault();
-						runTrace();
-					}}
-				>
-					<Input
-						bind:value={traceTarget}
-						placeholder="example.com"
-						autocomplete="off"
-						autocapitalize="off"
-						spellcheck={false}
-						aria-label="trace target host"
-					/>
-					<Button
-						type="submit"
-						disabled={browserTraceRunning || edgeTraceRunning}
-						class="font-bold"
-					>
-						{browserTraceRunning || edgeTraceRunning ? 'running…' : 'run'}
-					</Button>
-				</form>
-
-				{#if traceStarted}
-					<div class="grid gap-4 sm:grid-cols-2">
-						<div class="flex flex-col gap-1 text-sm">
-							<p class="text-muted-foreground">
-								<span class="text-primary select-none">$&nbsp;</span>you → edge
-							</p>
-							{#if browserTraceRunning}
-								<div
-									class="bg-background flex flex-col gap-2.5 rounded-md p-3"
-									aria-label="Waiting for browser probes"
-								>
-									<Skeleton class="h-3.5 w-3/5" />
-									<Skeleton class="h-3.5 w-2/5" />
-									<Skeleton class="h-3.5 w-1/2" />
-								</div>
-							{:else}
-								<pre
-									class="bg-background overflow-x-auto rounded-md p-3 leading-relaxed whitespace-pre-wrap">{browserTrace ||
-										' '}</pre>
-							{/if}
-						</div>
-						<div class="flex flex-col gap-1 text-sm">
-							<p class="text-muted-foreground">
-								<span class="text-primary select-none">$&nbsp;</span>curl {host}/trace/{traceTarget}
-							</p>
-							{#if edgeTraceRunning}
-								<div
-									class="bg-background flex flex-col gap-2.5 rounded-md p-3"
-									aria-label="Waiting for edge probes"
-								>
-									<Skeleton class="h-3.5 w-3/5" />
-									<Skeleton class="h-3.5 w-2/5" />
-									<Skeleton class="h-3.5 w-1/2" />
-								</div>
-							{:else}
-								<pre
-									class="bg-background overflow-x-auto rounded-md p-3 leading-relaxed whitespace-pre-wrap {edgeTraceFailed
-										? 'text-destructive'
-										: ''}">{edgeTrace || ' '}</pre>
-							{/if}
-						</div>
-					</div>
-					<div class="text-muted-foreground flex flex-col gap-1.5 text-xs leading-relaxed">
-						<p>
-							Both timings run at the same moment. The left panel measures the trip from your device
-							to Cloudflare; the right panel measures the trip from Cloudflare on to the site you
-							entered.
-						</p>
-						<p>
-							If the left number is high, the delay is on your side of the network — your Wi-Fi,
-							router, or internet provider. If the right number is high, the delay is out on the
-							wider internet, past Cloudflare.
-						</p>
-						<p>
-							This is a timing test, not a full traceroute: it can't list every router along the
-							way, because web browsers and Cloudflare Workers aren't allowed to send the kind of
-							network packets that a traceroute relies on.
-						</p>
-					</div>
-				{:else}
-					<p class="text-muted-foreground text-sm">
-						<span class="text-primary select-none">$&nbsp;</span>curl {host}/trace/example.com
-					</p>
-				{/if}
-			</Card.Content>
-		</Card.Root>
-	</Tabs.Content>
 
 	<Tabs.Content value="headers">
 		<Card.Root>

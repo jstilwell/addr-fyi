@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import Mail from '@lucide/svelte/icons/mail';
 	import Terminal from '@lucide/svelte/icons/terminal';
+	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import { site } from '$lib/config/site';
 
 	let { children } = $props();
@@ -18,11 +19,12 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<meta name="theme-color" content="#211f1a" />
+	<meta name="theme-color" content="#f7f8fa" media="(prefers-color-scheme: light)" />
+	<meta name="theme-color" content="#25292f" media="(prefers-color-scheme: dark)" />
 </svelte:head>
 
 <div class="mx-auto flex min-h-svh w-full max-w-3xl flex-col gap-10 px-4 py-8 sm:px-6 sm:py-12">
-	<header class="flex items-center">
+	<header class="flex items-center justify-between">
 		<a
 			href={resolve('/')}
 			class="flex items-center gap-2 text-lg font-bold tracking-tight"
@@ -31,6 +33,7 @@
 			<Terminal class="text-primary size-5" aria-hidden="true" />
 			<span>addr.fyi</span><span class="cursor-blink text-primary -ml-1">▊</span>
 		</a>
+		<ThemeToggle />
 	</header>
 
 	{@render children?.()}

@@ -18,7 +18,6 @@ gets JSON.
 | `/dns/{query}?type=MX` | DNS via DoH — names get records, IPs get a PTR lookup       |
 | `/rdns/{ip}`           | reverse DNS (PTR) for IPv4 or IPv6                          |
 | `/weather`             | weather + alerts at your IP's location (Open-Meteo / NWS)   |
-| `/trace/{host}`        | timed HTTP probes to a host from the Cloudflare edge        |
 | `/whois/{query}`       | registration data via RDAP — accepts IP, domain, or ASN     |
 | `/cidr/{range}`        | subnet calculator (IPv4 + IPv6), e.g. `/cidr/10.0.0.0/24`   |
 | `/headers`             | your request headers, echoed back                           |

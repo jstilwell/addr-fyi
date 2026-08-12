@@ -19,8 +19,6 @@ export type ClientInfo = {
 	colo: string | null;
 	httpProtocol: string | null;
 	tlsVersion: string | null;
-	/** TCP round-trip time between the client and the edge, measured by Cloudflare (ms). */
-	tcpRtt: number | null;
 };
 
 export const getClientInfo = (
@@ -41,6 +39,5 @@ export const getClientInfo = (
 	org: (cf?.asOrganization as string) ?? null,
 	colo: (cf?.colo as string) ?? null,
 	httpProtocol: (cf?.httpProtocol as string) ?? null,
-	tlsVersion: (cf?.tlsVersion as string) ?? null,
-	tcpRtt: (cf?.clientTcpRtt as number) ?? null
+	tlsVersion: (cf?.tlsVersion as string) ?? null
 });
