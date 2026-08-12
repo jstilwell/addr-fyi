@@ -49,9 +49,26 @@
 
 	{@render children?.()}
 
-	<footer class="text-muted-foreground mt-auto flex flex-col gap-2 text-xs">
-		<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-			<span>addr-fyi ({site.version})</span>
+	<footer
+		class="text-muted-foreground mt-auto flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-center text-xs"
+	>
+		<p>
+			Copyright {year}
+			<!-- eslint-disable svelte/no-navigation-without-resolve -- external donate link -->
+			<a
+				href={site.donateUrl}
+				target="_blank"
+				rel="noopener"
+				class="hover:text-foreground underline-offset-2 transition-colors hover:underline"
+			>
+				{site.author}
+			</a>
+			<!-- eslint-enable svelte/no-navigation-without-resolve -->
+			<span class="mx-1 select-none">&bull;</span>
+			addr-fyi ({site.version})
+		</p>
+		<span class="select-none">&bull;</span>
+		<div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
 			<a href={resolve('/privacy')} class="hover:text-foreground transition-colors">privacy</a>
 			<a href={resolve('/terms')} class="hover:text-foreground transition-colors">terms</a>
 			<a href={resolve('/sitemap')} class="hover:text-foreground transition-colors">sitemap</a>
@@ -75,18 +92,5 @@
 			</a>
 			<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		</div>
-		<p>
-			Copyright {year}
-			<!-- eslint-disable svelte/no-navigation-without-resolve -- external donate link -->
-			<a
-				href={site.donateUrl}
-				target="_blank"
-				rel="noopener"
-				class="hover:text-foreground underline-offset-2 transition-colors hover:underline"
-			>
-				{site.author}
-			</a>
-			<!-- eslint-enable svelte/no-navigation-without-resolve -->
-		</p>
 	</footer>
 </div>
