@@ -306,7 +306,13 @@
 					</form>
 
 					{#if tool.id === 'whois'}
-						<div class="flex flex-col gap-1.5 text-sm">
+						<!-- Once a real lookup has run, dim the examples so the actual command
+						     above stands out; hover restores full contrast for clicking. -->
+						<div
+							class="flex flex-col gap-1.5 text-sm transition-opacity {commands.whois
+								? 'opacity-50 hover:opacity-100'
+								: ''}"
+						>
 							<p class="text-muted-foreground text-xs">
 								whois accepts a domain, an IP address, or an ASN:
 							</p>
