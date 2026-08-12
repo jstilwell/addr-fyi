@@ -6,8 +6,10 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import * as Tabs from '$lib/components/ui/tabs';
+	import Calculator from '@lucide/svelte/icons/calculator';
 	import Check from '@lucide/svelte/icons/check';
 	import Copy from '@lucide/svelte/icons/copy';
+	import FileSearch from '@lucide/svelte/icons/file-search';
 	import FileText from '@lucide/svelte/icons/file-text';
 	import Globe from '@lucide/svelte/icons/globe';
 	import MapPin from '@lucide/svelte/icons/map-pin';
@@ -50,6 +52,21 @@
 			icon: Undo2,
 			placeholder: '1.1.1.1',
 			path: (q) => `/rdns/${encodeURIComponent(q)}`
+		},
+		{
+			id: 'whois',
+			label: 'whois',
+			icon: FileSearch,
+			placeholder: 'example.com',
+			path: (q) => `/whois/${encodeURIComponent(q)}`
+		},
+		{
+			id: 'cidr',
+			label: 'cidr',
+			icon: Calculator,
+			placeholder: '10.0.0.0/24',
+			// The range's own slash must stay raw in the path.
+			path: (q) => `/cidr/${q}`
 		}
 	];
 
@@ -58,7 +75,13 @@
 	let copied = $state(false);
 
 	// Per-tool state: what was asked, what came back.
-	let inputs = $state<Record<string, string>>({ lookup: '', dns: '', rdns: '' });
+	let inputs = $state<Record<string, string>>({
+		lookup: '',
+		dns: '',
+		rdns: '',
+		whois: '',
+		cidr: ''
+	});
 	let outputs = $state<Record<string, string>>({});
 	let commands = $state<Record<string, string>>({});
 	let running = $state<Record<string, boolean>>({});
@@ -119,6 +142,8 @@
 		['/find/{ip}', 'geolocate any IP or hostname'],
 		['/dns/{name}?type=MX', 'DNS records over DoH'],
 		['/rdns/{ip}', 'reverse DNS (PTR)'],
+		['/whois/{ip|domain|asn}', 'registration data via RDAP'],
+		['/cidr/{range}', 'subnet calculator (IPv4 + IPv6)'],
 		['/headers', 'your request headers, echoed back'],
 		['/ua', 'your user agent'],
 		['/health', 'liveness check']

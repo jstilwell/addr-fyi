@@ -17,6 +17,8 @@ gets JSON.
 | `/find/{ip}`          | geolocation, ISP, ASN, rDNS, proxy/hosting flags for any IP |
 | `/dns/{name}?type=MX` | DNS records via DNS-over-HTTPS (A, AAAA, MX, TXT, NS, …)    |
 | `/rdns/{ip}`          | reverse DNS (PTR) for IPv4 or IPv6                          |
+| `/whois/{query}`      | registration data via RDAP — accepts IP, domain, or ASN     |
+| `/cidr/{range}`       | subnet calculator (IPv4 + IPv6), e.g. `/cidr/10.0.0.0/24`   |
 | `/headers`            | your request headers, echoed back                           |
 | `/ua`                 | your user agent                                             |
 | `/health`             | liveness check                                              |
@@ -25,6 +27,8 @@ gets JSON.
 curl addr.fyi
 curl addr.fyi/find/128.143.20.111
 curl addr.fyi/dns/example.com?type=MX
+curl addr.fyi/whois/AS13335
+curl addr.fyi/cidr/192.168.1.0/26
 curl -H 'Accept: application/json' addr.fyi/geo
 ```
 
@@ -38,6 +42,9 @@ curl -H 'Accept: application/json' addr.fyi/geo
   staying under the upstream rate limit.
 - **DNS tools use DoH.** `/dns` and `/rdns` query Cloudflare's
   `cloudflare-dns.com/dns-query` resolver.
+- **WHOIS is RDAP.** `/whois` bootstraps through rdap.org to the authoritative
+  registry (ARIN/RIPE/Verisign/…) and caches results for 6h. gTLDs all support
+  RDAP; some ccTLDs don't and will return "no record found".
 - **One UI, one API.** The browser interface (Svelte 5 + Tailwind v4 +
   shadcn-svelte + Lucide) renders exactly what the plaintext API returns —
   each panel shows its equivalent `curl` command.
