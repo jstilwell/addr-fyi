@@ -11,6 +11,7 @@
 	import * as Tabs from '$lib/components/ui/tabs';
 	import Calculator from '@lucide/svelte/icons/calculator';
 	import Check from '@lucide/svelte/icons/check';
+	import CloudSun from '@lucide/svelte/icons/cloud-sun';
 	import Copy from '@lucide/svelte/icons/copy';
 	import FileSearch from '@lucide/svelte/icons/file-search';
 	import FileText from '@lucide/svelte/icons/file-text';
@@ -19,7 +20,6 @@
 	import Network from '@lucide/svelte/icons/network';
 	import Search from '@lucide/svelte/icons/search';
 	import Terminal from '@lucide/svelte/icons/terminal';
-	import Undo2 from '@lucide/svelte/icons/undo-2';
 
 	let { data } = $props();
 
@@ -32,6 +32,8 @@
 		icon: typeof Search;
 		placeholder: string;
 		path: (query: string) => string;
+		/** false = the tool takes no query (e.g. weather); default true. */
+		requiresInput?: boolean;
 	};
 
 	const tools: Tool[] = [
@@ -46,15 +48,18 @@
 			id: 'dns',
 			label: 'dns',
 			icon: Globe,
-			placeholder: 'example.com',
-			path: (q) => `/dns/${encodeURIComponent(q)}${dnsType === 'A' ? '' : `?type=${dnsType}`}`
+			placeholder: 'example.com or 1.1.1.1',
+			// IPs get a reverse (PTR) lookup server-side; the type only applies to names.
+			path: (q) =>
+				`/dns/${encodeURIComponent(q)}${dnsInputIsIp || dnsType === 'A' ? '' : `?type=${dnsType}`}`
 		},
 		{
-			id: 'rdns',
-			label: 'rdns',
-			icon: Undo2,
-			placeholder: '1.1.1.1',
-			path: (q) => `/rdns/${encodeURIComponent(q)}`
+			id: 'weather',
+			label: 'weather',
+			icon: CloudSun,
+			placeholder: '',
+			requiresInput: false,
+			path: () => '/weather'
 		},
 		{
 			id: 'whois',
@@ -81,7 +86,7 @@
 	let inputs = $state<Record<string, string>>({
 		lookup: '',
 		dns: '',
-		rdns: '',
+		weather: '',
 		whois: '',
 		cidr: ''
 	});
@@ -90,9 +95,15 @@
 	let running = $state<Record<string, boolean>>({});
 	let failed = $state<Record<string, boolean>>({});
 
+	// Rough client-side check so the dns panel can hide the record-type select
+	// for IPs; the endpoint does its own strict detection.
+	const dnsInputIsIp = $derived(
+		/^\d{1,3}(\.\d{1,3}){3}$/.test(inputs.dns.trim()) || inputs.dns.includes(':')
+	);
+
 	async function run(tool: Tool) {
 		const query = inputs[tool.id].trim();
-		if (!query || running[tool.id]) return;
+		if ((query === '' && (tool.requiresInput ?? true)) || running[tool.id]) return;
 
 		const path = tool.path(query);
 		commands[tool.id] = `curl ${host}${path}`;
@@ -143,8 +154,9 @@
 		['/geo', 'your IP + geolocation (from the edge, no lookup)'],
 		['/json', 'everything we know about you, as JSON'],
 		['/find/{ip}', 'geolocate any IP or hostname'],
-		['/dns/{name}?type=MX', 'DNS records over DoH'],
+		['/dns/{name|ip}?type=MX', 'DNS records over DoH; IPs get a PTR lookup'],
 		['/rdns/{ip}', 'reverse DNS (PTR)'],
+		['/weather', "weather + alerts at your IP's location"],
 		['/whois/{ip|domain|asn}', 'registration data via RDAP'],
 		['/cidr/{range}', 'subnet calculator (IPv4 + IPv6)'],
 		['/headers', 'your request headers, echoed back'],
@@ -195,7 +207,15 @@
 </section>
 
 <!-- Tools -->
-<Tabs.Root bind:value={activeTab}>
+<Tabs.Root
+	bind:value={activeTab}
+	onValueChange={(value) => {
+		// Weather needs no input — fetch it the first time the tab opens.
+		if (value === 'weather' && !outputs.weather && !running.weather) {
+			void run(tools.find((t) => t.id === 'weather')!);
+		}
+	}}
+>
 	<Tabs.List class="w-full justify-start overflow-x-auto">
 		{#each tools as tool (tool.id)}
 			<Tabs.Trigger value={tool.id} class="gap-1.5">
@@ -221,15 +241,17 @@
 							void run(tool);
 						}}
 					>
-						<Input
-							bind:value={inputs[tool.id]}
-							placeholder={tool.placeholder}
-							autocomplete="off"
-							autocapitalize="off"
-							spellcheck={false}
-							aria-label={`${tool.label} query`}
-						/>
-						{#if tool.id === 'dns'}
+						{#if tool.requiresInput ?? true}
+							<Input
+								bind:value={inputs[tool.id]}
+								placeholder={tool.placeholder}
+								autocomplete="off"
+								autocapitalize="off"
+								spellcheck={false}
+								aria-label={`${tool.label} query`}
+							/>
+						{/if}
+						{#if tool.id === 'dns' && !dnsInputIsIp}
 							<select
 								bind:value={dnsType}
 								aria-label="Record type"
@@ -241,7 +263,7 @@
 							</select>
 						{/if}
 						<Button type="submit" disabled={running[tool.id]} class="font-bold">
-							{running[tool.id] ? 'running…' : 'run'}
+							{running[tool.id] ? 'running…' : (tool.requiresInput ?? true) ? 'run' : 'refresh'}
 						</Button>
 					</form>
 
