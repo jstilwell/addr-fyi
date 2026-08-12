@@ -8,12 +8,20 @@
 
 	let { children } = $props();
 
-	// Magnifying-glass emoji rendered as an inline SVG favicon — no asset file,
-	// crisp at any size. dominant-baseline centers the glyph in the viewbox.
+	// Terminal-prompt favicon (">_"), drawn to match the header glyph and the
+	// site's steel-blue accent — a rounded dark tile with a chevron + cursor
+	// bar. Self-contained inline SVG, crisp at any size, no asset file.
 	const favicon =
 		'data:image/svg+xml,' +
 		encodeURIComponent(
-			'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50" y="52" font-size="76" text-anchor="middle" dominant-baseline="central">🔍</text></svg>'
+			[
+				'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">',
+				'<rect width="100" height="100" rx="22" fill="#1e2430"/>',
+				'<path d="M28 34 L48 50 L28 66" fill="none" stroke="#7aa0e0"',
+				' stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>',
+				'<rect x="54" y="60" width="24" height="8" rx="4" fill="#7aa0e0"/>',
+				'</svg>'
+			].join('')
 		);
 </script>
 
