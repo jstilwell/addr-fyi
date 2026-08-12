@@ -449,11 +449,23 @@
 							{/if}
 						</div>
 					</div>
-					<p class="text-muted-foreground text-xs">
-						both columns run at the same time. left slow = your last mile; right slow = between
-						Cloudflare and the target. not a hop-by-hop traceroute — browsers and Workers can't send
-						ICMP.
-					</p>
+					<div class="text-muted-foreground flex flex-col gap-1.5 text-xs leading-relaxed">
+						<p>
+							Both timings run at the same moment. The left panel measures the trip from your device
+							to Cloudflare; the right panel measures the trip from Cloudflare on to the site you
+							entered.
+						</p>
+						<p>
+							If the left number is high, the delay is on your side of the network — your Wi-Fi,
+							router, or internet provider. If the right number is high, the delay is out on the
+							wider internet, past Cloudflare.
+						</p>
+						<p>
+							This is a timing test, not a full traceroute: it can't list every router along the
+							way, because web browsers and Cloudflare Workers aren't allowed to send the kind of
+							network packets that a traceroute relies on.
+						</p>
+					</div>
 				{:else}
 					<p class="text-muted-foreground text-sm">
 						<span class="text-primary select-none">$&nbsp;</span>curl {host}/trace/example.com
