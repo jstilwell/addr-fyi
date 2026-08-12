@@ -4,12 +4,19 @@
 	import { page } from '$app/state';
 	import Mail from '@lucide/svelte/icons/mail';
 	import Terminal from '@lucide/svelte/icons/terminal';
-	import favicon from '$lib/assets/favicon.svg';
 	import { site } from '$lib/config/site';
 
 	let { children } = $props();
 
 	const onHome = $derived(page.url.pathname === '/');
+
+	// Magnifying-glass emoji rendered as an inline SVG favicon — no asset file,
+	// crisp at any size. dominant-baseline centers the glyph in the viewbox.
+	const favicon =
+		'data:image/svg+xml,' +
+		encodeURIComponent(
+			'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50" y="52" font-size="76" text-anchor="middle" dominant-baseline="central">🔍</text></svg>'
+		);
 </script>
 
 <svelte:head>
