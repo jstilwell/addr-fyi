@@ -24,6 +24,12 @@
 				<dd class="text-muted-foreground">{page.blurb}</dd>
 			</div>
 		{/each}
+		<div class="flex flex-col sm:flex-row sm:gap-4">
+			<dt class="shrink-0 sm:w-32">
+				<a href={resolve('/sitemap.xml')} class="text-primary hover:underline">/sitemap.xml</a>
+			</dt>
+			<dd class="text-muted-foreground">this list as XML, for machines</dd>
+		</div>
 	</dl>
 	<p class="text-muted-foreground mt-8 text-sm">
 		The plaintext API endpoints live under the <a
