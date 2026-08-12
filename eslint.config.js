@@ -38,5 +38,12 @@ export default defineConfig(
 				svelteConfig
 			}
 		}
+	},
+	{
+		// Generated shadcn-svelte components; keep lint noise out of vendored code.
+		files: ['src/lib/components/ui/**'],
+		rules: {
+			'svelte/no-navigation-without-resolve': 'off'
+		}
 	}
 );

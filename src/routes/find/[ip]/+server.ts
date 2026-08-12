@@ -1,66 +1,15 @@
 import type { RequestHandler } from './$types';
+import { formatGeo, lookupGeo } from '$lib/server/geo';
+import { negotiate, text } from '$lib/server/respond';
 
-type GeoSuccess = {
-	status: 'success';
-	query: string;
-	country: string;
-	regionName: string;
-	city: string;
-	zip: string;
-	lat: number;
-	lon: number;
-	isp: string;
-};
+export const GET: RequestHandler = async ({ params, fetch, request, platform }) => {
+	const result = await lookupGeo(params.ip, fetch, platform);
 
-type GeoFailure = {
-	status: 'fail';
-	message: string;
-};
-
-type GeoResponse = GeoSuccess | GeoFailure;
-
-const text = (body: string, status = 200) =>
-	new Response(body, {
-		status,
-		headers: { 'Content-Type': 'text/plain; charset=utf-8' }
-	});
-
-// ip-api.com's free tier is HTTP-only. The data is public and non-sensitive,
-// so the unencrypted upstream hop is acceptable here.
-const GEO_ENDPOINT = 'http://ip-api.com/json';
-const GEO_FIELDS = 'status,message,query,country,regionName,city,zip,lat,lon,isp';
-
-export const GET: RequestHandler = async ({ params, fetch }) => {
-	let data: GeoResponse;
-
-	try {
-		const response = await fetch(
-			`${GEO_ENDPOINT}/${encodeURIComponent(params.ip)}?fields=${GEO_FIELDS}`,
-			{ signal: AbortSignal.timeout(5000) }
-		);
-
-		if (!response.ok) {
-			return text(`Error: lookup service returned ${response.status}\n`, 502);
-		}
-
-		data = (await response.json()) as GeoResponse;
-	} catch {
-		return text('Error: lookup service unavailable\n', 504);
+	if (!result.ok) {
+		return negotiate(request, { error: result.error }, `Error: ${result.error}\n`, result.status);
 	}
 
-	if (data.status === 'fail') {
-		return text(`Error: ${data.message}\n`, 400);
-	}
-
-	return text(
-		`IP: ${data.query}
-Country: ${data.country}
-Region: ${data.regionName}
-City: ${data.city}
-ZIP: ${data.zip}
-Latitude: ${data.lat}
-Longitude: ${data.lon}
-ISP: ${data.isp}
-`
-	);
+	return negotiate(request, result.data, formatGeo(result.data), 200, 'public, max-age=3600');
 };
+
+export const fallback: RequestHandler = () => text('Error: method not allowed\n', 405);

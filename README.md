@@ -1,19 +1,53 @@
-# quick-ip
+# addr.fyi
 
-A tiny IP lookup service deployed to Cloudflare Workers.
+Your IP address and quick network lookups, deployed to Cloudflare Workers at
+[addr.fyi](https://addr.fyi).
 
-- Visit `/` to see your IP address.
-- Visit `/find/{ip_address}` to look up the location of an IP address.
+Every endpoint content-negotiates: browsers get a reactive UI, `curl` (and
+anything else) gets pipe-friendly plaintext, and `Accept: application/json`
+gets JSON.
 
-`/` content-negotiates: browsers get the HTML page, everything else (curl, scripts)
-gets plain text.
+## Endpoints
+
+| Endpoint              | Returns                                                     |
+| --------------------- | ----------------------------------------------------------- |
+| `/`                   | your IP address                                             |
+| `/geo`                | your IP + geolocation, straight from the edge (no lookup)   |
+| `/json`               | everything we know about you, as JSON                       |
+| `/find/{ip}`          | geolocation, ISP, ASN, rDNS, proxy/hosting flags for any IP |
+| `/dns/{name}?type=MX` | DNS records via DNS-over-HTTPS (A, AAAA, MX, TXT, NS, …)    |
+| `/rdns/{ip}`          | reverse DNS (PTR) for IPv4 or IPv6                          |
+| `/headers`            | your request headers, echoed back                           |
+| `/ua`                 | your user agent                                             |
+| `/health`             | liveness check                                              |
+
+```sh
+curl addr.fyi
+curl addr.fyi/find/128.143.20.111
+curl addr.fyi/dns/example.com?type=MX
+curl -H 'Accept: application/json' addr.fyi/geo
+```
+
+## How it works
+
+- **Visitor info is free.** `/`, `/geo`, and `/json` read Cloudflare's
+  `request.cf` object — geolocation, ASN, and TLS details are attached to
+  every request at the edge, so no upstream call is made.
+- **Arbitrary lookups are cached.** `/find/{ip}` proxies ip-api.com and caches
+  successful results in `caches.default` for 24h, keeping latency low and
+  staying under the upstream rate limit.
+- **DNS tools use DoH.** `/dns` and `/rdns` query Cloudflare's
+  `cloudflare-dns.com/dns-query` resolver.
+- **One UI, one API.** The browser interface (Svelte 5 + Tailwind v4 +
+  shadcn-svelte + Lucide) renders exactly what the plaintext API returns —
+  each panel shows its equivalent `curl` command.
 
 ## Development
 
 ```sh
 npm install
-npm run dev        # Vite dev server
-npm run preview    # build + run in the local workerd runtime
+npm run dev        # Vite dev server (request.cf is unavailable here)
+npm run preview    # build + run in the local workerd runtime (full fidelity)
 ```
 
 ## Deploying
