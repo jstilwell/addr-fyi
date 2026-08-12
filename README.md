@@ -9,19 +9,21 @@ gets JSON.
 
 ## Endpoints
 
-| Endpoint              | Returns                                                     |
-| --------------------- | ----------------------------------------------------------- |
-| `/`                   | your IP address                                             |
-| `/geo`                | your IP + geolocation, straight from the edge (no lookup)   |
-| `/json`               | everything we know about you, as JSON                       |
-| `/find/{ip}`          | geolocation, ISP, ASN, rDNS, proxy/hosting flags for any IP |
-| `/dns/{name}?type=MX` | DNS records via DNS-over-HTTPS (A, AAAA, MX, TXT, NS, …)    |
-| `/rdns/{ip}`          | reverse DNS (PTR) for IPv4 or IPv6                          |
-| `/whois/{query}`      | registration data via RDAP — accepts IP, domain, or ASN     |
-| `/cidr/{range}`       | subnet calculator (IPv4 + IPv6), e.g. `/cidr/10.0.0.0/24`   |
-| `/headers`            | your request headers, echoed back                           |
-| `/ua`                 | your user agent                                             |
-| `/health`             | liveness check                                              |
+| Endpoint               | Returns                                                     |
+| ---------------------- | ----------------------------------------------------------- |
+| `/`                    | your IP address                                             |
+| `/geo`                 | your IP + geolocation, straight from the edge (no lookup)   |
+| `/json`                | everything we know about you, as JSON                       |
+| `/find/{ip}`           | geolocation, ISP, ASN, rDNS, proxy/hosting flags for any IP |
+| `/dns/{query}?type=MX` | DNS via DoH — names get records, IPs get a PTR lookup       |
+| `/rdns/{ip}`           | reverse DNS (PTR) for IPv4 or IPv6                          |
+| `/weather`             | weather + alerts at your IP's location (Open-Meteo / NWS)   |
+| `/trace/{host}`        | timed HTTP probes to a host from the Cloudflare edge        |
+| `/whois/{query}`       | registration data via RDAP — accepts IP, domain, or ASN     |
+| `/cidr/{range}`        | subnet calculator (IPv4 + IPv6), e.g. `/cidr/10.0.0.0/24`   |
+| `/headers`             | your request headers, echoed back                           |
+| `/ua`                  | your user agent                                             |
+| `/health`              | liveness check                                              |
 
 ```sh
 curl addr.fyi
