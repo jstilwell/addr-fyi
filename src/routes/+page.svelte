@@ -205,12 +205,19 @@
 	}
 
 	// path: what's shown (with placeholders). example: a concrete, runnable path
-	// used for the copy button so the copied curl actually works as-is.
-	const endpoints: { path: string; example: string; desc: string }[] = [
+	// used for the copy button so the copied curl actually works as-is. The
+	// IP-shaped examples use the visitor's own address (matching the tab
+	// pre-fill), falling back to generic values for IPv6 visitors. /dns and
+	// /whois keep a domain/ASN example on purpose, to show the non-IP capability.
+	const endpoints = $derived<{ path: string; example: string; desc: string }[]>([
 		{ path: '/', example: '/', desc: 'your IP address' },
 		{ path: '/geo', example: '/geo', desc: 'your IP + geolocation (from the edge, no lookup)' },
 		{ path: '/json', example: '/json', desc: 'everything we know about you, as JSON' },
-		{ path: '/find/{ip}', example: '/find/8.8.8.8', desc: 'geolocate any IP or hostname' },
+		{
+			path: '/find/{ip}',
+			example: `/find/${clientIpv4 ?? '8.8.8.8'}`,
+			desc: 'geolocate any IP or hostname'
+		},
 		{
 			path: '/dns/{name|ip}?type=MX',
 			example: '/dns/example.com?type=MX',
@@ -224,13 +231,13 @@
 		},
 		{
 			path: '/cidr/{range}',
-			example: '/cidr/10.0.0.0/24',
+			example: `/cidr/${clientCidr24 ?? '10.0.0.0/24'}`,
 			desc: 'subnet calculator (IPv4 + IPv6)'
 		},
 		{ path: '/headers', example: '/headers', desc: 'your request headers, echoed back' },
 		{ path: '/ua', example: '/ua', desc: 'your user agent' },
 		{ path: '/health', example: '/health', desc: 'liveness check' }
-	];
+	]);
 
 	// Per-endpoint "copied" feedback for the api tab copy buttons.
 	let copiedEndpoint = $state<string | null>(null);
