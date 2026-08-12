@@ -204,19 +204,45 @@
 		runWhoisExample(`AS${asn}`);
 	}
 
-	const endpoints = [
-		['/', 'your IP address'],
-		['/geo', 'your IP + geolocation (from the edge, no lookup)'],
-		['/json', 'everything we know about you, as JSON'],
-		['/find/{ip}', 'geolocate any IP or hostname'],
-		['/dns/{name|ip}?type=MX', 'DNS records over DoH; IPs get a reverse (PTR) lookup'],
-		['/weather', "weather + alerts at your IP's location"],
-		['/whois/{ip|domain|asn}', 'registration data via RDAP'],
-		['/cidr/{range}', 'subnet calculator (IPv4 + IPv6)'],
-		['/headers', 'your request headers, echoed back'],
-		['/ua', 'your user agent'],
-		['/health', 'liveness check']
+	// path: what's shown (with placeholders). example: a concrete, runnable path
+	// used for the copy button so the copied curl actually works as-is.
+	const endpoints: { path: string; example: string; desc: string }[] = [
+		{ path: '/', example: '/', desc: 'your IP address' },
+		{ path: '/geo', example: '/geo', desc: 'your IP + geolocation (from the edge, no lookup)' },
+		{ path: '/json', example: '/json', desc: 'everything we know about you, as JSON' },
+		{ path: '/find/{ip}', example: '/find/8.8.8.8', desc: 'geolocate any IP or hostname' },
+		{
+			path: '/dns/{name|ip}?type=MX',
+			example: '/dns/example.com?type=MX',
+			desc: 'DNS records over DoH; IPs get a reverse (PTR) lookup'
+		},
+		{ path: '/weather', example: '/weather', desc: "weather + alerts at your IP's location" },
+		{
+			path: '/whois/{ip|domain|asn}',
+			example: '/whois/AS13335',
+			desc: 'registration data via RDAP'
+		},
+		{
+			path: '/cidr/{range}',
+			example: '/cidr/10.0.0.0/24',
+			desc: 'subnet calculator (IPv4 + IPv6)'
+		},
+		{ path: '/headers', example: '/headers', desc: 'your request headers, echoed back' },
+		{ path: '/ua', example: '/ua', desc: 'your user agent' },
+		{ path: '/health', example: '/health', desc: 'liveness check' }
 	];
+
+	// Per-endpoint "copied" feedback for the api tab copy buttons.
+	let copiedEndpoint = $state<string | null>(null);
+
+	async function copyEndpoint(example: string) {
+		// Copy a runnable curl against the current host (matches the rest of the page).
+		await navigator.clipboard.writeText(`curl ${host}${example}`);
+		copiedEndpoint = example;
+		setTimeout(() => {
+			if (copiedEndpoint === example) copiedEndpoint = null;
+		}, 1500);
+	}
 </script>
 
 <Seo title="addr.fyi — your IP and quick network lookups" description={site.description} path="/" />
@@ -431,10 +457,25 @@
 			</Card.Header>
 			<Card.Content>
 				<dl class="flex flex-col gap-2 text-sm">
-					{#each endpoints as [path, description] (path)}
-						<div class="flex flex-col sm:flex-row sm:gap-4">
-							<dt class="text-primary shrink-0 sm:w-56">{path}</dt>
-							<dd class="text-muted-foreground">{description}</dd>
+					{#each endpoints as endpoint (endpoint.path)}
+						<div class="flex items-start gap-2 sm:gap-4">
+							<button
+								type="button"
+								onclick={() => copyEndpoint(endpoint.example)}
+								aria-label={`Copy curl ${host}${endpoint.example}`}
+								title="Copy curl command"
+								class="text-muted-foreground/60 hover:text-foreground mt-0.5 shrink-0 transition-colors"
+							>
+								{#if copiedEndpoint === endpoint.example}
+									<Check class="text-primary size-3.5" aria-hidden="true" />
+								{:else}
+									<Copy class="size-3.5" aria-hidden="true" />
+								{/if}
+							</button>
+							<div class="flex min-w-0 flex-1 flex-col sm:flex-row sm:gap-4">
+								<dt class="text-primary shrink-0 break-all sm:w-52">{endpoint.path}</dt>
+								<dd class="text-muted-foreground">{endpoint.desc}</dd>
+							</div>
 						</div>
 					{/each}
 				</dl>
