@@ -25,6 +25,6 @@ export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
 		{ name: params.name, type, answers: result.answers },
 		plaintext,
 		200,
-		'public, max-age=60'
+		'private, max-age=60'
 	);
 };

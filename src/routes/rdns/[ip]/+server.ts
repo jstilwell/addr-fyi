@@ -24,6 +24,6 @@ export const GET: RequestHandler = async ({ params, fetch, request }) => {
 		{ ip: params.ip, ptr: hostnames },
 		plaintext,
 		200,
-		'public, max-age=300'
+		'private, max-age=300'
 	);
 };

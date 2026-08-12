@@ -15,6 +15,6 @@ export const GET: RequestHandler = async ({ params, fetch, request, platform }) 
 		result.summary,
 		formatWhois(result.summary),
 		200,
-		'public, max-age=3600'
+		'private, max-age=3600'
 	);
 };
