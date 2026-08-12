@@ -54,9 +54,9 @@
 	>
 		<p>
 			Copyright {year}
-			<!-- eslint-disable svelte/no-navigation-without-resolve -- external donate link -->
+			<!-- eslint-disable svelte/no-navigation-without-resolve -- external author link -->
 			<a
-				href={site.donateUrl}
+				href={site.authorUrl}
 				target="_blank"
 				rel="noopener"
 				class="hover:text-foreground underline-offset-2 transition-colors hover:underline"
@@ -70,14 +70,6 @@
 			<a href={resolve('/privacy')} class="hover:text-foreground transition-colors">privacy</a>
 			<a href={resolve('/terms')} class="hover:text-foreground transition-colors">terms</a>
 			<a href={resolve('/sitemap')} class="hover:text-foreground transition-colors">sitemap</a>
-			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- mailto link -->
-			<a
-				href="mailto:{site.email}"
-				class="hover:text-foreground transition-colors"
-				aria-label="Email {site.email}"
-			>
-				<Mail class="size-4" aria-hidden="true" />
-			</a>
 			<!-- eslint-disable svelte/no-navigation-without-resolve -- external donate link -->
 			<a
 				href={site.donateUrl}
@@ -89,6 +81,14 @@
 				<Coffee class="size-4" aria-hidden="true" />
 			</a>
 			<!-- eslint-enable svelte/no-navigation-without-resolve -->
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- mailto link -->
+			<a
+				href="mailto:{site.email}"
+				class="hover:text-foreground transition-colors"
+				aria-label="Email {site.email}"
+			>
+				<Mail class="size-4" aria-hidden="true" />
+			</a>
 		</div>
 	</footer>
 </div>
