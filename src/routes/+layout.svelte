@@ -8,6 +8,8 @@
 
 	let { children } = $props();
 
+	const year = new Date().getFullYear();
+
 	// Terminal-prompt favicon (">_"), drawn to match the header glyph and the
 	// site's steel-blue accent — a rounded dark tile with a chevron + cursor
 	// bar. Self-contained inline SVG, crisp at any size, no asset file.
@@ -46,7 +48,7 @@
 
 	{@render children?.()}
 
-	<footer class="text-muted-foreground mt-auto flex flex-col gap-3 text-xs">
+	<footer class="text-muted-foreground mt-auto flex flex-col gap-2 text-xs">
 		<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
 			<span>addr-fyi ({site.version})</span>
 			<a href={resolve('/privacy')} class="hover:text-foreground transition-colors">privacy</a>
@@ -61,5 +63,6 @@
 				<Mail class="size-4" aria-hidden="true" />
 			</a>
 		</div>
+		<p>Copyright {year} {site.author}</p>
 	</footer>
 </div>
