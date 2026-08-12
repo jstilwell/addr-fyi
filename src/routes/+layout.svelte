@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import { resolve } from '$app/paths';
+	import Coffee from '@lucide/svelte/icons/coffee';
 	import Mail from '@lucide/svelte/icons/mail';
 	import Terminal from '@lucide/svelte/icons/terminal';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
@@ -62,7 +63,30 @@
 			>
 				<Mail class="size-4" aria-hidden="true" />
 			</a>
+			<!-- eslint-disable svelte/no-navigation-without-resolve -- external donate link -->
+			<a
+				href={site.donateUrl}
+				target="_blank"
+				rel="noopener"
+				class="hover:text-foreground transition-colors"
+				aria-label="Buy me a coffee"
+			>
+				<Coffee class="size-4" aria-hidden="true" />
+			</a>
+			<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		</div>
-		<p>Copyright {year} {site.author}</p>
+		<p>
+			Copyright {year}
+			<!-- eslint-disable svelte/no-navigation-without-resolve -- external donate link -->
+			<a
+				href={site.donateUrl}
+				target="_blank"
+				rel="noopener"
+				class="hover:text-foreground underline-offset-2 transition-colors hover:underline"
+			>
+				{site.author}
+			</a>
+			<!-- eslint-enable svelte/no-navigation-without-resolve -->
+		</p>
 	</footer>
 </div>

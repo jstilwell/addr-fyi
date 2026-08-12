@@ -8,6 +8,7 @@ export const site = {
 	description: 'Your IP address and quick network lookups. curl-friendly.',
 	email: 'jesse@stilwe.com',
 	author: 'Jesse Stilwell',
+	donateUrl: 'https://buy.stripe.com/5kQ4gBe7Lc7s68YaqZ4F200',
 	version: __APP_VERSION__
 };
 
