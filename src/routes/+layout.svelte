@@ -64,8 +64,6 @@
 				{site.author}
 			</a>
 			<!-- eslint-enable svelte/no-navigation-without-resolve -->
-			<span class="mx-1 select-none">&bull;</span>
-			addr-fyi ({site.version})
 		</p>
 		<span class="select-none">&bull;</span>
 		<div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
