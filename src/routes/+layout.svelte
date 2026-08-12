@@ -1,14 +1,11 @@
 <script lang="ts">
 	import '../app.css';
 	import { resolve } from '$app/paths';
-	import { page } from '$app/state';
 	import Mail from '@lucide/svelte/icons/mail';
 	import Terminal from '@lucide/svelte/icons/terminal';
 	import { site } from '$lib/config/site';
 
 	let { children } = $props();
-
-	const onHome = $derived(page.url.pathname === '/');
 
 	// Magnifying-glass emoji rendered as an inline SVG favicon — no asset file,
 	// crisp at any size. dominant-baseline centers the glyph in the viewbox.
@@ -39,12 +36,6 @@
 	{@render children?.()}
 
 	<footer class="text-muted-foreground mt-auto flex flex-col gap-3 text-xs">
-		{#if onHome}
-			<p>
-				every panel above is a rendered <code>curl</code> — the same bytes, drawn nicer. pipe away:
-				<code class="text-foreground">curl addr.fyi</code>
-			</p>
-		{/if}
 		<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
 			<span>addr-fyi ({site.version})</span>
 			<a href={resolve('/privacy')} class="hover:text-foreground transition-colors">privacy</a>
