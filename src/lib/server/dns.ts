@@ -114,7 +114,7 @@ export const toArpaName = (ip: string): string | null => {
 };
 
 /** Expand an IPv6 address into 8 zero-padded 4-char hex groups, or null if invalid. */
-const expandIpv6 = (ip: string): string[] | null => {
+export const expandIpv6 = (ip: string): string[] | null => {
 	const halves = ip.split('::');
 	if (halves.length > 2) return null;
 
