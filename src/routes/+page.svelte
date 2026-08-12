@@ -176,6 +176,18 @@
 		void run(tools.find((t) => t.id === 'whois')!);
 	}
 
+	// The dns tool handles both directions — a name gets forward records, an IP
+	// gets a reverse (PTR) lookup — so show one of each as runnable examples.
+	const dnsExamples = [
+		{ query: 'example.com', kind: 'a domain name (forward)' },
+		{ query: '8.8.8.8', kind: 'an IP address (reverse/PTR)' }
+	];
+
+	function runDnsExample(query: string) {
+		inputs.dns = query;
+		void run(tools.find((t) => t.id === 'dns')!);
+	}
+
 	// Clicking the visitor's own AS badge jumps to the whois tab and looks it up.
 	function lookupAsn(asn: number) {
 		activeTab = 'whois';
@@ -329,6 +341,28 @@
 						</div>
 					{/if}
 
+					{#if tool.id === 'dns'}
+						<div
+							class="flex flex-col gap-1.5 text-sm transition-opacity {commands.dns
+								? 'opacity-50 hover:opacity-100'
+								: ''}"
+						>
+							<p class="text-muted-foreground text-xs">
+								dns accepts a domain name or an IP address:
+							</p>
+							{#each dnsExamples as example (example.query)}
+								<button
+									type="button"
+									class="text-muted-foreground hover:text-foreground text-left transition-colors"
+									onclick={() => runDnsExample(example.query)}
+								>
+									<span class="text-primary select-none">$&nbsp;</span>curl {host}/dns/{example.query}
+									<span class="text-muted-foreground/70"># {example.kind}</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
+
 					{#if commands[tool.id]}
 						<div class="flex flex-col gap-1 text-sm">
 							<p class="text-muted-foreground">
@@ -353,7 +387,7 @@
 										: ''}">{outputs[tool.id] || ' '}</pre>
 							{/if}
 						</div>
-					{:else if tool.id !== 'whois'}
+					{:else if tool.id !== 'whois' && tool.id !== 'dns'}
 						<p class="text-muted-foreground text-sm">
 							<span class="text-primary select-none">$&nbsp;</span>curl {host}{tool.path(
 								tool.placeholder
