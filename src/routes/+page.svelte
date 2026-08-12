@@ -7,6 +7,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
+	import { Skeleton } from '$lib/components/ui/skeleton';
 	import * as Tabs from '$lib/components/ui/tabs';
 	import Calculator from '@lucide/svelte/icons/calculator';
 	import Check from '@lucide/svelte/icons/check';
@@ -249,12 +250,24 @@
 							<p class="text-muted-foreground">
 								<span class="text-primary select-none">$&nbsp;</span>{commands[tool.id]}
 							</p>
-							<pre
-								class="bg-background overflow-x-auto rounded-md p-3 leading-relaxed whitespace-pre-wrap {failed[
-									tool.id
-								]
-									? 'text-destructive'
-									: ''}">{outputs[tool.id] || ' '}</pre>
+							{#if running[tool.id]}
+								<div
+									class="bg-background flex flex-col gap-2.5 rounded-md p-3"
+									aria-label="Waiting for results"
+								>
+									<Skeleton class="h-3.5 w-2/5" />
+									<Skeleton class="h-3.5 w-3/5" />
+									<Skeleton class="h-3.5 w-1/2" />
+									<Skeleton class="h-3.5 w-1/3" />
+								</div>
+							{:else}
+								<pre
+									class="bg-background overflow-x-auto rounded-md p-3 leading-relaxed whitespace-pre-wrap {failed[
+										tool.id
+									]
+										? 'text-destructive'
+										: ''}">{outputs[tool.id] || ' '}</pre>
+							{/if}
 						</div>
 					{:else}
 						<p class="text-muted-foreground text-sm">
