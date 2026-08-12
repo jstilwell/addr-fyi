@@ -6,7 +6,8 @@ export const site = {
 	 * the deployed Worker sees http:// and that poisons canonicalization. */
 	url: 'https://addr.fyi',
 	description: 'Your IP address and quick network lookups. curl-friendly.',
-	email: 'contact@addr.fyi',
+	email: 'jesse@stilwe.com',
+	author: 'Jesse Stilwell',
 	version: __APP_VERSION__
 };
 
