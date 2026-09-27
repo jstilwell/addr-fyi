@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { replaceState } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { FORWARD_RECORD_TYPES } from '$lib/dns-record-types';
 	import Seo from '$lib/components/Seo.svelte';
 	import { site } from '$lib/config/site';
 	import { Badge } from '$lib/components/ui/badge';
@@ -24,7 +27,10 @@
 	let { data } = $props();
 
 	const host = page.url.host || 'addr.fyi';
-	const RECORD_TYPES = ['A', 'AAAA', 'CNAME', 'MX', 'NS', 'TXT', 'SOA', 'SRV', 'CAA'];
+
+	// Escape user input for a path segment, but keep IPv6 colons readable in the
+	// curl commands we display (they're legal in a path).
+	const encodeSegment = (value: string) => encodeURIComponent(value).replace(/%3A/gi, ':');
 
 	type Tool = {
 		id: string;
@@ -42,7 +48,7 @@
 			label: 'lookup',
 			icon: Search,
 			placeholder: '8.8.8.8',
-			path: (q) => `/find/${encodeURIComponent(q)}`
+			path: (q) => `/find/${encodeSegment(q)}`
 		},
 		{
 			id: 'dns',
@@ -51,14 +57,14 @@
 			placeholder: 'example.com or 1.1.1.1',
 			// IPs get a reverse (PTR) lookup server-side; the type only applies to names.
 			path: (q) =>
-				`/dns/${encodeURIComponent(q)}${dnsInputIsIp || dnsType === 'A' ? '' : `?type=${dnsType}`}`
+				`/dns/${encodeSegment(q)}${dnsInputIsIp || dnsType === 'A' ? '' : `?type=${dnsType}`}`
 		},
 		{
 			id: 'whois',
 			label: 'whois',
 			icon: FileSearch,
 			placeholder: 'example.com, 8.8.8.8, or AS13335',
-			path: (q) => `/whois/${encodeURIComponent(q)}`
+			path: (q) => `/whois/${encodeSegment(q)}`
 		},
 		{
 			id: 'weather',
@@ -73,14 +79,16 @@
 			label: 'cidr',
 			icon: Calculator,
 			placeholder: '10.0.0.0/24',
-			// The range's own slash must stay raw in the path.
-			path: (q) => `/cidr/${q}`
+			// The range's own slash must stay raw in the path; each side is escaped.
+			path: (q) => `/cidr/${q.split('/').map(encodeSegment).join('/')}`
 		}
 	];
 
 	let activeTab = $state('lookup');
 	let dnsType = $state('A');
 	let copied = $state(false);
+	// Screen-reader announcement for copy feedback (the icons alone are silent).
+	let announcement = $state('');
 
 	// Per-tool state: what was asked, what came back.
 	let inputs = $state<Record<string, string>>({
@@ -119,9 +127,36 @@
 				: 'your address'
 	);
 
-	async function run(tool: Tool) {
+	const TABS = [...tools.map((t) => t.id), 'headers', 'api'];
+
+	// What each tool last ran, so the address bar can reflect the open tab.
+	const lastRun: Record<string, Record<string, string>> = {};
+
+	// Mirror the open tab (and its last query) into the URL, so any result can
+	// be shared or bookmarked. replaceState: no new history entry per run.
+	function syncUrl(tab: string) {
+		const search = new URLSearchParams({
+			...(tab !== 'lookup' && { tab }),
+			...lastRun[tab]
+		}).toString();
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- query-only update of this page, built on resolve('/')
+		replaceState(`${resolve('/')}${search ? `?${search}` : ''}`, {});
+	}
+
+	/**
+	 * updateUrl: false for the deep-linked run on load — the address bar already
+	 * says what's running, and replaceState can't be called before the router
+	 * has finished hydrating.
+	 */
+	async function run(tool: Tool, { updateUrl = true } = {}) {
 		const query = inputs[tool.id].trim();
 		if ((query === '' && (tool.requiresInput ?? true)) || running[tool.id]) return;
+
+		lastRun[tool.id] = {
+			...(query && { q: query }),
+			...(tool.id === 'dns' && !dnsInputIsIp && dnsType !== 'A' && { type: dnsType })
+		};
+		if (updateUrl) syncUrl(tool.id);
 
 		const path = tool.path(query);
 		commands[tool.id] = `curl ${host}${path}`;
@@ -142,25 +177,50 @@
 		}
 	}
 
+	/** Copy text; false when the browser refuses (insecure context, denied permission). */
+	async function copyText(text: string): Promise<boolean> {
+		try {
+			await navigator.clipboard.writeText(text);
+			announcement = 'Copied to clipboard';
+			return true;
+		} catch {
+			announcement = "Couldn't copy — select the text and copy it manually";
+			return false;
+		}
+	}
+
 	async function copyIp() {
-		await navigator.clipboard.writeText(data.client.ip);
+		if (!(await copyText(data.client.ip))) return;
 		copied = true;
 		setTimeout(() => (copied = false), 1500);
 	}
 
-	// addr.fyi/find/1.2.3.4 in a browser redirects here with ?q= — run it immediately.
-	// Otherwise pre-fill the IP-shaped tools with the visitor's own address so
-	// there's a real, relevant example already in the field.
+	// Pre-fill the IP-shaped tools with the visitor's own address so there's a
+	// real, relevant example already in the field. Then honor deep links:
+	// /?tab=dns&q=example.com&type=MX (browsers visiting /dns/example.com etc.
+	// are redirected here), and the older /?q=8.8.8.8 form for lookup.
 	onMount(() => {
-		const q = page.url.searchParams.get('q');
-		if (q) {
-			inputs.lookup = q;
-			void run(tools[0]);
-		} else if (clientIpv4) {
+		if (clientIpv4) {
 			inputs.lookup = clientIpv4;
 			inputs.dns = clientIpv4;
 			inputs.cidr = clientCidr24 ?? '';
 		}
+
+		const params = page.url.searchParams;
+		const q = params.get('q');
+		const tab = params.get('tab') ?? (q ? 'lookup' : null);
+		if (!tab || !TABS.includes(tab)) return;
+
+		activeTab = tab;
+		const tool = tools.find((t) => t.id === tab);
+		if (!tool) return;
+
+		const type = params.get('type')?.toUpperCase();
+		if (tool.id === 'dns' && type && (FORWARD_RECORD_TYPES as readonly string[]).includes(type)) {
+			dnsType = type;
+		}
+		if (q) inputs[tool.id] = q;
+		if (q || tool.requiresInput === false) void run(tool, { updateUrl: false });
 	});
 
 	const geoLine = $derived(
@@ -244,7 +304,7 @@
 
 	async function copyEndpoint(example: string) {
 		// Copy a runnable curl against the current host (matches the rest of the page).
-		await navigator.clipboard.writeText(`curl ${host}${example}`);
+		if (!(await copyText(`curl ${host}${example}`))) return;
 		copiedEndpoint = example;
 		setTimeout(() => {
 			if (copiedEndpoint === example) copiedEndpoint = null;
@@ -253,6 +313,8 @@
 </script>
 
 <Seo title="addr.fyi — your IP and quick network lookups" description={site.description} path="/" />
+
+<p class="sr-only" aria-live="polite">{announcement}</p>
 
 <!-- Hero: the same answer curl gets, rendered. -->
 <section aria-label="Your IP address">
@@ -305,6 +367,8 @@
 		// Weather needs no input — fetch it the first time the tab opens.
 		if (value === 'weather' && !outputs.weather && !running.weather) {
 			void run(tools.find((t) => t.id === 'weather')!);
+		} else {
+			syncUrl(value);
 		}
 	}}
 >
@@ -349,7 +413,7 @@
 								aria-label="Record type"
 								class="border-input h-9 rounded-md border bg-transparent px-2 text-sm"
 							>
-								{#each RECORD_TYPES as type (type)}
+								{#each FORWARD_RECORD_TYPES as type (type)}
 									<option value={type}>{type}</option>
 								{/each}
 							</select>
