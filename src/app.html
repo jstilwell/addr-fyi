@@ -11,6 +11,13 @@
 				if (dark) document.documentElement.classList.add('dark');
 			})();
 		</script>
+		<!-- Cloudflare Web Analytics (cookieless; HTML pages only, never plaintext/JSON) -->
+		<script
+			type="module"
+			src="https://static.cloudflareinsights.com/beacon.min.js"
+			data-cf-beacon='{"token": "6db1590c0e91443c9e3a2b8abc1d73d0"}'
+		></script>
+		<!-- End Cloudflare Web Analytics -->
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

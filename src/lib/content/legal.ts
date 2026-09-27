@@ -11,12 +11,18 @@ export type LegalDoc = {
 
 export const PRIVACY: LegalDoc = {
 	title: 'Privacy',
-	updated: '2026-08-12',
+	updated: '2026-09-26',
 	sections: [
 		{
 			heading: 'The short version',
 			body: [
-				'addr.fyi has no accounts, no cookies, no analytics scripts, and no ads. There is nothing to sign up for and nothing tracking you between visits.'
+				'addr.fyi has no accounts, no cookies, and no ads. There is nothing to sign up for and nothing tracking you between visits. The web pages count visits with Cloudflare Web Analytics, which is cookieless; the plaintext and JSON API is not tracked.'
+			]
+		},
+		{
+			heading: 'Analytics',
+			body: [
+				'Browser pages load Cloudflare Web Analytics, a privacy-focused script that records aggregate page views and performance (page, referrer, browser, country, load times). It sets no cookies, does not use local storage to identify you, does not fingerprint you, and is not used to track you across sites. Requests made with curl or other API clients never run it.'
 			]
 		},
 		{
