@@ -9,6 +9,15 @@
 		"binding": "ASSETS"
 	},
 	"routes": [{ "pattern": "addr.fyi", "custom_domain": true }],
+	// Per-IP limit on the upstream-backed lookups (/find, /whois, /dns,
+	// /weather). Counters are per Cloudflare location and approximate.
+	"ratelimits": [
+		{
+			"name": "LOOKUP_LIMITER",
+			"namespace_id": "7301",
+			"simple": { "limit": 60, "period": 60 }
+		}
+	],
 	"observability": {
 		"enabled": true
 	}

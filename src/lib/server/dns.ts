@@ -1,24 +1,10 @@
 /** DNS-over-HTTPS lookups via Cloudflare's resolver (free, no key, HTTPS). */
 
+import { isRecordType, RECORD_TYPES, type RecordType } from '$lib/dns-record-types';
+
+export { isRecordType, RECORD_TYPES, type RecordType };
+
 const DOH_ENDPOINT = 'https://cloudflare-dns.com/dns-query';
-
-export const RECORD_TYPES = [
-	'A',
-	'AAAA',
-	'CAA',
-	'CNAME',
-	'MX',
-	'NS',
-	'PTR',
-	'SOA',
-	'SRV',
-	'TXT'
-] as const;
-
-export type RecordType = (typeof RECORD_TYPES)[number];
-
-export const isRecordType = (value: string): value is RecordType =>
-	(RECORD_TYPES as readonly string[]).includes(value);
 
 const TYPE_NAMES: Record<number, string> = {
 	1: 'A',
