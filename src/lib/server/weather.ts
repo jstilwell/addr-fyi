@@ -4,8 +4,16 @@
  * Weather Service when the visitor is in the US (the NWS API is US-only).
  */
 
+import { site } from '$lib/config/site';
+import { cacheJson, cacheKey, readCachedJson } from '$lib/server/cache';
+
 const OPEN_METEO = 'https://api.open-meteo.com/v1/forecast';
 const NWS_ALERTS = 'https://api.weather.gov/alerts/active';
+/**
+ * Forecasts are shared by everyone at the same edge-geolocated coordinates
+ * (city-level), so cache them briefly. Alerts are never cached.
+ */
+const FORECAST_TTL_SECONDS = 600;
 
 /** WMO weather interpretation codes → human text. */
 const WMO_TEXT: Record<number, string> = {
@@ -154,7 +162,7 @@ const fetchAlerts = async (
 			// api.weather.gov requires a User-Agent identifying the caller.
 			headers: {
 				accept: 'application/geo+json',
-				'user-agent': 'addr.fyi/1.0 (jesse@stilwe.com)'
+				'user-agent': `addr.fyi/${site.version} (${site.email})`
 			},
 			signal: AbortSignal.timeout(6000)
 		});
@@ -171,8 +179,26 @@ const fetchAlerts = async (
 	}
 };
 
+/** Open-Meteo forecast, edge-cached per coordinates + unit system. */
+const fetchForecast = async (
+	fetcher: typeof fetch,
+	platform: App.Platform | undefined,
+	params: URLSearchParams
+): Promise<OpenMeteoResponse> => {
+	const key = cacheKey(`weather/${encodeURIComponent(params.toString())}`);
+	const stored = await readCachedJson<OpenMeteoResponse>(platform, key);
+	if (stored) return stored;
+
+	const response = await fetcher(`${OPEN_METEO}?${params}`, { signal: AbortSignal.timeout(6000) });
+	if (!response.ok) throw new Error(`weather service returned ${response.status}`);
+	const data = (await response.json()) as OpenMeteoResponse;
+	cacheJson(platform, key, data, FORECAST_TTL_SECONDS);
+	return data;
+};
+
 export const getWeather = async (
 	fetcher: typeof fetch,
+	platform: App.Platform | undefined,
 	options: {
 		latitude: number;
 		longitude: number;
@@ -221,10 +247,7 @@ export const getWeather = async (
 	let alerts: WeatherAlert[] | null;
 	try {
 		[data, alerts] = await Promise.all([
-			fetcher(`${OPEN_METEO}?${params}`, { signal: AbortSignal.timeout(6000) }).then((response) => {
-				if (!response.ok) throw new Error(`weather service returned ${response.status}`);
-				return response.json() as Promise<OpenMeteoResponse>;
-			}),
+			fetchForecast(fetcher, platform, params),
 			imperial ? fetchAlerts(fetcher, latitude, longitude) : Promise.resolve(null)
 		]);
 	} catch (err) {
