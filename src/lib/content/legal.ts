@@ -3,6 +3,8 @@
  * for curl (via +server.ts) and as HTML for browsers (via +page.svelte).
  */
 
+import { site } from '$lib/config/site';
+
 export type LegalDoc = {
 	title: string;
 	updated: string;
@@ -28,7 +30,8 @@ export const PRIVACY: LegalDoc = {
 		{
 			heading: 'What the service sees',
 			body: [
-				'Like every web server, addr.fyi receives your IP address and request headers with each request — that is literally what the tool shows you. This data is used to answer your request and for standard operational logging at Cloudflare (error rates, latency, abuse detection), with short retention. It is not sold, shared, or used to build profiles.'
+				'Like every web server, addr.fyi receives your IP address and request headers with each request — that is literally what the tool shows you. This data is used to answer your request and for standard operational logging at Cloudflare (error rates, latency, abuse detection), with short retention. It is not sold, shared, or used to build profiles.',
+				'To keep usage fair, requests to the lookup tools are counted per IP address over a one-minute window; the counter is not stored beyond that.'
 			]
 		},
 		{
@@ -36,19 +39,19 @@ export const PRIVACY: LegalDoc = {
 			body: [
 				'Queries you submit to the lookup tools are forwarded to third-party services to be answered: geolocation lookups to ip-api.com, WHOIS lookups to the authoritative RDAP registry (via rdap.org), and DNS lookups to Cloudflare DNS-over-HTTPS. Only the query itself (the IP, domain, or ASN you typed) is forwarded — not your identity.',
 				'The weather tool sends the approximate coordinates derived from your IP by Cloudflare to Open-Meteo (and, for US locations, to the National Weather Service for alerts).',
-				'Successful lookup results are cached at the Cloudflare edge for a few hours so repeated queries are fast; the cache stores the answer, not who asked.'
+				'Lookup results are cached at the Cloudflare edge (from minutes for weather to a few hours for lookups) so repeated queries are fast; the cache stores the answer, not who asked.'
 			]
 		},
 		{
 			heading: 'Contact',
-			body: ['Questions? Email jesse@stilwe.com.']
+			body: [`Questions? Email ${site.email}.`]
 		}
 	]
 };
 
 export const TERMS: LegalDoc = {
 	title: 'Terms of Service',
-	updated: '2026-08-12',
+	updated: '2026-09-26',
 	sections: [
 		{
 			heading: 'The service',
@@ -71,12 +74,12 @@ export const TERMS: LegalDoc = {
 		{
 			heading: 'Changes',
 			body: [
-				'The service, these terms, and the API may change or be discontinued at any time. Breaking changes to plaintext output are versioned (see the footer) but not otherwise announced.'
+				'The service, these terms, and the API may change or be discontinued at any time. The API follows semantic versioning: breaking changes to plaintext output bump the major version, which every response reports in its X-Addr-Version header (curl -I addr.fyi). Changes are not otherwise announced.'
 			]
 		},
 		{
 			heading: 'Contact',
-			body: ['Questions? Email jesse@stilwe.com.']
+			body: [`Questions? Email ${site.email}.`]
 		}
 	]
 };

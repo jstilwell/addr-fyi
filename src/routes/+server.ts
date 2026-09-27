@@ -1,10 +1,7 @@
 import type { RequestHandler } from './$types';
+import { negotiate } from '$lib/server/respond';
 
-export const GET: RequestHandler = ({ getClientAddress }) => {
-	return new Response(getClientAddress() + '\n', {
-		headers: {
-			'Content-Type': 'text/plain; charset=utf-8',
-			'Cache-Control': 'no-store'
-		}
-	});
+export const GET: RequestHandler = ({ request, getClientAddress }) => {
+	const ip = getClientAddress();
+	return negotiate(request, { ip }, ip + '\n');
 };

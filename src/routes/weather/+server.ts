@@ -16,7 +16,7 @@ export const GET: RequestHandler = async ({ request, fetch, platform }) => {
 		return negotiate(request, { error }, `Error: ${error}\n`, 503);
 	}
 
-	const result = await getWeather(fetch, {
+	const result = await getWeather(fetch, platform, {
 		latitude,
 		longitude,
 		country: (cf.country as string) ?? '',

@@ -5,10 +5,14 @@
  * support RDAP; some ccTLDs still don't and will return "no record found".
  */
 
+import { site } from '$lib/config/site';
+import { cacheJson, cacheKey, readCachedJson } from '$lib/server/cache';
 import { toArpaName } from '$lib/server/dns';
 
 const RDAP_BOOTSTRAP = 'https://rdap.org';
 const CACHE_TTL_SECONDS = 21600;
+/** "No record" answers are cached briefly so repeated misses skip the registry. */
+const NEGATIVE_TTL_SECONDS = 3600;
 
 type RdapEntity = {
 	roles?: string[];
@@ -86,7 +90,12 @@ const eventDate = (data: RdapResponse, action: string): string | null => {
 	return event ? event.eventDate.slice(0, 10) : null;
 };
 
-const cacheKeyFor = (path: string) => new Request(`https://cache.addr.fyi/rdap/${path}`);
+/** Message rebuilt per request so it echoes the query exactly as typed. */
+const notFound = (kind: WhoisSummary['kind'], query: string): WhoisResult => ({
+	ok: false,
+	error: `no ${kind} record found for ${query}`,
+	status: 404
+});
 
 export const lookupWhois = async (
 	query: string,
@@ -94,16 +103,12 @@ export const lookupWhois = async (
 	platform: App.Platform | undefined
 ): Promise<WhoisResult> => {
 	const { kind, path } = classify(query);
-	const cache = platform?.caches?.default;
-	const cacheKey = cacheKeyFor(path);
-
-	if (cache) {
-		try {
-			const hit = await cache.match(cacheKey);
-			if (hit) return { ok: true, summary: (await hit.json()) as WhoisSummary, cached: true };
-		} catch {
-			// Cache read failure is non-fatal; fall through to the upstream lookup.
-		}
+	const key = cacheKey(`rdap/${path}`);
+	const stored = await readCachedJson<WhoisSummary | { notFound: true }>(platform, key);
+	if (stored) {
+		return 'notFound' in stored
+			? notFound(kind, query)
+			: { ok: true, summary: stored, cached: true };
 	}
 
 	let data: RdapResponse;
@@ -112,11 +117,15 @@ export const lookupWhois = async (
 		// rdap.org 302-redirects to the authoritative registry; fetch follows it.
 		const response = await fetcher(`${RDAP_BOOTSTRAP}/${path}`, {
 			// rdap.org 403s requests without a User-Agent (Workers send none by default).
-			headers: { accept: 'application/rdap+json', 'user-agent': 'addr.fyi/1.0' },
+			headers: {
+				accept: 'application/rdap+json',
+				'user-agent': `addr.fyi/${site.version} (+${site.url})`
+			},
 			signal: AbortSignal.timeout(8000)
 		});
 		if (response.status === 404) {
-			return { ok: false, error: `no ${kind} record found for ${query}`, status: 404 };
+			cacheJson(platform, key, { notFound: true }, NEGATIVE_TTL_SECONDS);
+			return notFound(kind, query);
 		}
 		if (!response.ok) {
 			return { ok: false, error: `registry returned ${response.status}`, status: 502 };
@@ -166,15 +175,7 @@ export const lookupWhois = async (
 		source
 	};
 
-	if (cache && platform) {
-		const stored = new Response(JSON.stringify(summary), {
-			headers: {
-				'Content-Type': 'application/json',
-				'Cache-Control': `public, max-age=${CACHE_TTL_SECONDS}`
-			}
-		});
-		platform.ctx.waitUntil(cache.put(cacheKey, stored));
-	}
+	cacheJson(platform, key, summary, CACHE_TTL_SECONDS);
 
 	return { ok: true, summary, cached: false };
 };
