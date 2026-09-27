@@ -11,7 +11,7 @@ gets JSON.
 
 | Endpoint               | Returns                                                         |
 | ---------------------- | --------------------------------------------------------------- |
-| `/`                    | your IP address                                                 |
+| `/`                    | your IP address (`{"ip": …}` as JSON)                           |
 | `/geo`                 | your IP + geolocation, straight from the edge (no lookup)       |
 | `/json`                | everything we know about you, as JSON                           |
 | `/find/{ip}`           | geolocation, ISP, ASN, rDNS, proxy/hosting flags for any IP     |
@@ -32,14 +32,26 @@ curl addr.fyi/cidr/192.168.1.0/26
 curl -H 'Accept: application/json' addr.fyi/geo
 ```
 
+The API is versioned with [semver](https://semver.org): every response carries
+an `X-Addr-Version` header, and breaking changes to plaintext output bump the
+major version. The lookup endpoints (`/find`, `/whois`, `/dns`, `/weather`) are
+rate limited per IP (60 requests/minute); over the limit you get a `429` with
+`Retry-After`.
+
+Opening a tool endpoint in a browser (e.g. `addr.fyi/dns/example.com?type=MX`)
+redirects to the UI with that tool open and the query run, and the UI keeps
+the address bar in sync (`/?tab=dns&q=example.com&type=MX`), so results are
+shareable.
+
 ## How it works
 
 - **Visitor info is free.** `/`, `/geo`, and `/json` read Cloudflare's
   `request.cf` object — geolocation, ASN, and TLS details are attached to
   every request at the edge, so no upstream call is made.
 - **Arbitrary lookups are cached.** `/find/{ip}` proxies ip-api.com and caches
-  successful results in `caches.default` for 24h, keeping latency low and
-  staying under the upstream rate limit.
+  successful results in `caches.default` for 24h (misses for 1h), keeping
+  latency low and staying under the upstream rate limit. Weather forecasts are
+  cached for 10 minutes per location; NWS alerts are always fetched live.
 - **DNS uses DoH.** `/dns` queries Cloudflare's `cloudflare-dns.com/dns-query`
   resolver; an IP argument is reversed to a PTR lookup automatically.
 - **WHOIS is RDAP.** `/whois` bootstraps through rdap.org to the authoritative
@@ -55,7 +67,13 @@ curl -H 'Accept: application/json' addr.fyi/geo
 npm install
 npm run dev        # Vite dev server (request.cf is unavailable here)
 npm run preview    # build + run in the local workerd runtime (full fidelity)
+npm test           # Vitest unit tests (snapshots lock the plaintext output)
+npm run check      # svelte-check / TypeScript
+npm run lint       # Prettier + ESLint
 ```
+
+CI (`.github/workflows/ci.yml`) runs lint, check, test and build on every push
+to `main` and every pull request.
 
 ## Deploying
 

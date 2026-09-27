@@ -1,1 +1,1 @@
-<!-- Never rendered: the load function always redirects browsers to /?q={ip}. -->
+<!-- Never rendered: the load function always redirects browsers to the UI. -->
