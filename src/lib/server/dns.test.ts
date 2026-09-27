@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { expandIpv6, isRecordType, toArpaName } from './dns';
+import { expandIpv6, isRecordType, RECORD_TYPES, toArpaName } from './dns';
 
 describe('expandIpv6', () => {
 	it('expands compressed forms', () => {
@@ -55,5 +55,11 @@ describe('isRecordType', () => {
 		expect(isRecordType('MX')).toBe(true);
 		expect(isRecordType('mx')).toBe(false);
 		expect(isRecordType('ANY')).toBe(false);
+	});
+});
+
+describe('RECORD_TYPES', () => {
+	it('keeps the order the /dns error message has always listed', () => {
+		expect(RECORD_TYPES.join(', ')).toBe('A, AAAA, CAA, CNAME, MX, NS, PTR, SOA, SRV, TXT');
 	});
 });

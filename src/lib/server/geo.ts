@@ -6,10 +6,24 @@
  * the unencrypted upstream hop is acceptable here.
  */
 
+import { cacheJson, cacheKey, readCachedJson } from '$lib/server/cache';
+
 const GEO_ENDPOINT = 'http://ip-api.com/json';
 const GEO_FIELDS =
 	'status,message,query,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,reverse,proxy,hosting';
 const CACHE_TTL_SECONDS = 86400;
+/** Upstream "fail" answers (private range, invalid query) are deterministic. */
+const NEGATIVE_TTL_SECONDS = 3600;
+
+const HOSTNAME = /^(?=.{1,253}\.?$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9-]{2,63}\.?$/i;
+
+/**
+ * Cheap local sanity check so obvious garbage never spends the upstream's
+ * 45 req/min budget. IP-shaped strings pass through for ip-api to judge
+ * (it also accepts IPv4-mapped IPv6 and similar forms).
+ */
+export const isLookupTarget = (query: string): boolean =>
+	/^[0-9a-f:.]+$/i.test(query) || HOSTNAME.test(query);
 
 export type GeoSuccess = {
 	status: 'success';
@@ -35,27 +49,19 @@ export type GeoFailure = { status: 'fail'; message: string };
 export type GeoResult =
 	{ ok: true; data: GeoSuccess; cached: boolean } | { ok: false; error: string; status: number };
 
-/** Synthetic cache key — never fetched, only used to address caches.default. */
-const cacheKeyFor = (query: string) =>
-	new Request(`https://cache.addr.fyi/geo/${encodeURIComponent(query)}`);
-
 export const lookupGeo = async (
 	query: string,
 	fetcher: typeof fetch,
 	platform: App.Platform | undefined
 ): Promise<GeoResult> => {
-	const cache = platform?.caches?.default;
-	const cacheKey = cacheKeyFor(query);
+	if (!isLookupTarget(query)) return { ok: false, error: 'invalid query', status: 400 };
 
-	if (cache) {
-		try {
-			const hit = await cache.match(cacheKey);
-			if (hit) {
-				return { ok: true, data: (await hit.json()) as GeoSuccess, cached: true };
-			}
-		} catch {
-			// Cache read failure is non-fatal; fall through to the upstream lookup.
-		}
+	const key = cacheKey(`geo/${encodeURIComponent(query)}`);
+	const stored = await readCachedJson<GeoSuccess | GeoFailure>(platform, key);
+	if (stored) {
+		return stored.status === 'fail'
+			? { ok: false, error: stored.message, status: 400 }
+			: { ok: true, data: stored, cached: true };
 	}
 
 	let data: GeoSuccess | GeoFailure;
@@ -73,18 +79,11 @@ export const lookupGeo = async (
 	}
 
 	if (data.status === 'fail') {
+		cacheJson(platform, key, data, NEGATIVE_TTL_SECONDS);
 		return { ok: false, error: data.message, status: 400 };
 	}
 
-	if (cache && platform) {
-		const stored = new Response(JSON.stringify(data), {
-			headers: {
-				'Content-Type': 'application/json',
-				'Cache-Control': `public, max-age=${CACHE_TTL_SECONDS}`
-			}
-		});
-		platform.ctx.waitUntil(cache.put(cacheKey, stored));
-	}
+	cacheJson(platform, key, data, CACHE_TTL_SECONDS);
 
 	return { ok: true, data, cached: false };
 };
