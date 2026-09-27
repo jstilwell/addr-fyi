@@ -6,7 +6,7 @@
 
 <Seo
 	title="privacy — addr.fyi"
-	description="What addr.fyi does (and does not) collect: no accounts, no cookies, no analytics."
+	description="What addr.fyi does (and does not) collect: no accounts, no cookies, no ads, cookieless analytics only."
 	path="/privacy"
 />
 
