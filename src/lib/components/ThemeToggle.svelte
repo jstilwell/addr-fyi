@@ -15,7 +15,11 @@
 	function toggle() {
 		dark = !dark;
 		document.documentElement.classList.toggle('dark', dark);
-		localStorage.setItem('theme', dark ? 'dark' : 'light');
+		try {
+			localStorage.setItem('theme', dark ? 'dark' : 'light');
+		} catch {
+			// Storage blocked: the toggle still works for this page view.
+		}
 	}
 </script>
 
