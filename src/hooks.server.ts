@@ -1,8 +1,10 @@
-import { env } from 'cloudflare:workers';
-import type { Handle } from '@sveltejs/kit/hooks';
+import { env, waitUntil } from 'cloudflare:workers';
+import { dev } from '$app/env';
+import { sequence, type Handle } from '@sveltejs/kit/hooks';
 import type { RequestEvent } from '@sveltejs/kit';
 import { site } from '#lib/config/site.js';
 import { negotiate } from '#lib/server/respond.js';
+import { responseCache } from '#lib/server/response-cache.js';
 
 /** Routes that call a rate-limited upstream (ip-api, RDAP, DoH, Open-Meteo). */
 const LIMITED_ROUTE = /^\/(find|whois|dns|weather)(\/|$)/;
@@ -73,7 +75,7 @@ const route = async (event: RequestEvent, resolve: Parameters<Handle>[0]['resolv
 	return response;
 };
 
-export const handle: Handle = async ({ event, resolve }) => {
+const app: Handle = async ({ event, resolve }) => {
 	const response = await route(event, resolve);
 
 	response.headers.set('X-Addr-Version', site.version);
@@ -92,3 +94,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	return response;
 };
+
+// The edge cache is outermost, so stored responses already carry the headers above.
+export const handle = sequence(responseCache({ waitUntil, enabled: !dev }), app);
