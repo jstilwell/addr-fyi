@@ -5,9 +5,9 @@
  * support RDAP; some ccTLDs still don't and will return "no record found".
  */
 
-import { site } from '$lib/config/site';
-import { cacheJson, cacheKey, readCachedJson } from '$lib/server/cache';
-import { toArpaName } from '$lib/server/dns';
+import { site } from '#lib/config/site.js';
+import { cacheJson, cacheKey, readCachedJson } from '#lib/server/cache.js';
+import { toArpaName } from '#lib/server/dns.js';
 
 const RDAP_BOOTSTRAP = 'https://rdap.org';
 const CACHE_TTL_SECONDS = 21600;
@@ -97,14 +97,10 @@ const notFound = (kind: WhoisSummary['kind'], query: string): WhoisResult => ({
 	status: 404
 });
 
-export const lookupWhois = async (
-	query: string,
-	fetcher: typeof fetch,
-	platform: App.Platform | undefined
-): Promise<WhoisResult> => {
+export const lookupWhois = async (query: string, fetcher: typeof fetch): Promise<WhoisResult> => {
 	const { kind, path } = classify(query);
 	const key = cacheKey(`rdap/${path}`);
-	const stored = await readCachedJson<WhoisSummary | { notFound: true }>(platform, key);
+	const stored = await readCachedJson<WhoisSummary | { notFound: true }>(key);
 	if (stored) {
 		return 'notFound' in stored
 			? notFound(kind, query)
@@ -124,7 +120,7 @@ export const lookupWhois = async (
 			signal: AbortSignal.timeout(8000)
 		});
 		if (response.status === 404) {
-			cacheJson(platform, key, { notFound: true }, NEGATIVE_TTL_SECONDS);
+			cacheJson(key, { notFound: true }, NEGATIVE_TTL_SECONDS);
 			return notFound(kind, query);
 		}
 		if (!response.ok) {
@@ -175,7 +171,7 @@ export const lookupWhois = async (
 		source
 	};
 
-	cacheJson(platform, key, summary, CACHE_TTL_SECONDS);
+	cacheJson(key, summary, CACHE_TTL_SECONDS);
 
 	return { ok: true, summary, cached: false };
 };

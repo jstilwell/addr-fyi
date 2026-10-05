@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
-import { legalPlaintext, PRIVACY } from '$lib/content/legal';
-import { text } from '$lib/server/respond';
+import { legalPlaintext, PRIVACY } from '#lib/content/legal.js';
+import { text } from '#lib/server/respond.js';
 
 /** Plaintext privacy policy for curl; browsers get the +page.svelte version. */
 export const GET: RequestHandler = () =>

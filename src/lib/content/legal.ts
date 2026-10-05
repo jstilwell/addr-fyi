@@ -3,7 +3,7 @@
  * for curl (via +server.ts) and as HTML for browsers (via +page.svelte).
  */
 
-import { site } from '$lib/config/site';
+import { site } from '#lib/config/site.js';
 
 export type LegalDoc = {
 	title: string;

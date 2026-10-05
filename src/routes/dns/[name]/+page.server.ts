@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { redirectToTool } from '$lib/server/ui-redirect';
+import { redirectToTool } from '#lib/server/ui-redirect.js';
 
 export const load: PageServerLoad = ({ params, url }) => {
 	const type = url.searchParams.get('type');

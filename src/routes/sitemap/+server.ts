@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
-import { PAGES, site } from '$lib/config/site';
-import { text } from '$lib/server/respond';
+import { PAGES, site } from '#lib/config/site.js';
+import { text } from '#lib/server/respond.js';
 
 /** Plaintext sitemap for curl; browsers get the +page.svelte version. */
 export const GET: RequestHandler = () =>

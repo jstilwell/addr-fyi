@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { LegalDoc } from '$lib/content/legal';
+	import type { LegalDoc } from '#lib/content/legal.js';
 
 	let { doc }: { doc: LegalDoc } = $props();
 </script>

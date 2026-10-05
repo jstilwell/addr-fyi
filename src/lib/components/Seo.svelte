@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { site } from '$lib/config/site';
+	import { site } from '#lib/config/site.js';
 
 	let { title, description, path }: { title: string; description: string; path: string } = $props();
 

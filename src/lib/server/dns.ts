@@ -1,6 +1,6 @@
 /** DNS-over-HTTPS lookups via Cloudflare's resolver (free, no key, HTTPS). */
 
-import { isRecordType, RECORD_TYPES, type RecordType } from '$lib/dns-record-types';
+import { isRecordType, RECORD_TYPES, type RecordType } from '#lib/dns-record-types.js';
 
 export { isRecordType, RECORD_TYPES, type RecordType };
 

@@ -6,7 +6,7 @@
  * the unencrypted upstream hop is acceptable here.
  */
 
-import { cacheJson, cacheKey, readCachedJson } from '$lib/server/cache';
+import { cacheJson, cacheKey, readCachedJson } from '#lib/server/cache.js';
 
 const GEO_ENDPOINT = 'http://ip-api.com/json';
 const GEO_FIELDS =
@@ -49,15 +49,11 @@ export type GeoFailure = { status: 'fail'; message: string };
 export type GeoResult =
 	{ ok: true; data: GeoSuccess; cached: boolean } | { ok: false; error: string; status: number };
 
-export const lookupGeo = async (
-	query: string,
-	fetcher: typeof fetch,
-	platform: App.Platform | undefined
-): Promise<GeoResult> => {
+export const lookupGeo = async (query: string, fetcher: typeof fetch): Promise<GeoResult> => {
 	if (!isLookupTarget(query)) return { ok: false, error: 'invalid query', status: 400 };
 
 	const key = cacheKey(`geo/${encodeURIComponent(query)}`);
-	const stored = await readCachedJson<GeoSuccess | GeoFailure>(platform, key);
+	const stored = await readCachedJson<GeoSuccess | GeoFailure>(key);
 	if (stored) {
 		return stored.status === 'fail'
 			? { ok: false, error: stored.message, status: 400 }
@@ -79,11 +75,11 @@ export const lookupGeo = async (
 	}
 
 	if (data.status === 'fail') {
-		cacheJson(platform, key, data, NEGATIVE_TTL_SECONDS);
+		cacheJson(key, data, NEGATIVE_TTL_SECONDS);
 		return { ok: false, error: data.message, status: 400 };
 	}
 
-	cacheJson(platform, key, data, CACHE_TTL_SECONDS);
+	cacheJson(key, data, CACHE_TTL_SECONDS);
 
 	return { ok: true, data, cached: false };
 };
