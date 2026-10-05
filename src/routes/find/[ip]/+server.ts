@@ -1,9 +1,9 @@
 import type { RequestHandler } from './$types';
-import { formatGeo, lookupGeo } from '$lib/server/geo';
-import { negotiate, text } from '$lib/server/respond';
+import { formatGeo, lookupGeo } from '#lib/server/geo.js';
+import { negotiate, text } from '#lib/server/respond.js';
 
-export const GET: RequestHandler = async ({ params, fetch, request, platform }) => {
-	const result = await lookupGeo(params.ip, fetch, platform);
+export const GET: RequestHandler = async ({ params, fetch, request }) => {
+	const result = await lookupGeo(params.ip, fetch);
 
 	if (!result.ok) {
 		return negotiate(request, { error: result.error }, `Error: ${result.error}\n`, result.status);

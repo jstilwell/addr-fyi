@@ -4,8 +4,8 @@
  * Weather Service when the visitor is in the US (the NWS API is US-only).
  */
 
-import { site } from '$lib/config/site';
-import { cacheJson, cacheKey, readCachedJson } from '$lib/server/cache';
+import { site } from '#lib/config/site.js';
+import { cacheJson, cacheKey, readCachedJson } from '#lib/server/cache.js';
 
 const OPEN_METEO = 'https://api.open-meteo.com/v1/forecast';
 const NWS_ALERTS = 'https://api.weather.gov/alerts/active';
@@ -182,23 +182,21 @@ const fetchAlerts = async (
 /** Open-Meteo forecast, edge-cached per coordinates + unit system. */
 const fetchForecast = async (
 	fetcher: typeof fetch,
-	platform: App.Platform | undefined,
 	params: URLSearchParams
 ): Promise<OpenMeteoResponse> => {
 	const key = cacheKey(`weather/${encodeURIComponent(params.toString())}`);
-	const stored = await readCachedJson<OpenMeteoResponse>(platform, key);
+	const stored = await readCachedJson<OpenMeteoResponse>(key);
 	if (stored) return stored;
 
 	const response = await fetcher(`${OPEN_METEO}?${params}`, { signal: AbortSignal.timeout(6000) });
 	if (!response.ok) throw new Error(`weather service returned ${response.status}`);
 	const data = (await response.json()) as OpenMeteoResponse;
-	cacheJson(platform, key, data, FORECAST_TTL_SECONDS);
+	cacheJson(key, data, FORECAST_TTL_SECONDS);
 	return data;
 };
 
 export const getWeather = async (
 	fetcher: typeof fetch,
-	platform: App.Platform | undefined,
 	options: {
 		latitude: number;
 		longitude: number;
@@ -247,7 +245,7 @@ export const getWeather = async (
 	let alerts: WeatherAlert[] | null;
 	try {
 		[data, alerts] = await Promise.all([
-			fetchForecast(fetcher, platform, params),
+			fetchForecast(fetcher, params),
 			imperial ? fetchAlerts(fetcher, latitude, longitude) : Promise.resolve(null)
 		]);
 	} catch (err) {

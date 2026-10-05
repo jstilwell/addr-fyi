@@ -1,5 +1,5 @@
 import type { RequestHandler } from './$types';
-import { PAGES, site } from '$lib/config/site';
+import { PAGES, site } from '#lib/config/site.js';
 
 const escapeXml = (value: string): string =>
 	value

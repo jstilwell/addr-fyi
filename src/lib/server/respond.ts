@@ -1,5 +1,3 @@
-import { json } from '@sveltejs/kit';
-
 /** True when the client explicitly asked for JSON (curl -H 'Accept: application/json'). */
 export const wantsJson = (request: Request): boolean =>
 	(request.headers.get('accept') ?? '').includes('application/json');
@@ -29,5 +27,5 @@ export const negotiate = (
 	cacheControl = 'no-store'
 ) =>
 	wantsJson(request)
-		? json(data, { status, headers: { 'Cache-Control': cacheControl } })
+		? Response.json(data, { status, headers: { 'Cache-Control': cacheControl } })
 		: text(plaintext, status, cacheControl);

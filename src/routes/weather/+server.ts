@@ -1,13 +1,13 @@
 import type { RequestHandler } from './$types';
-import { formatWeather, getWeather } from '$lib/server/weather';
-import { negotiate } from '$lib/server/respond';
+import { formatWeather, getWeather } from '#lib/server/weather.js';
+import { negotiate } from '#lib/server/respond.js';
 
 /**
  * Weather at the visitor's location, derived from Cloudflare's edge
  * geolocation of their IP — no input needed.
  */
-export const GET: RequestHandler = async ({ request, fetch, platform }) => {
-	const cf = platform?.cf;
+export const GET: RequestHandler = async ({ request, fetch }) => {
+	const cf = request.cf;
 	const latitude = Number(cf?.latitude);
 	const longitude = Number(cf?.longitude);
 
@@ -16,7 +16,7 @@ export const GET: RequestHandler = async ({ request, fetch, platform }) => {
 		return negotiate(request, { error }, `Error: ${error}\n`, 503);
 	}
 
-	const result = await getWeather(fetch, platform, {
+	const result = await getWeather(fetch, {
 		latitude,
 		longitude,
 		country: (cf.country as string) ?? '',

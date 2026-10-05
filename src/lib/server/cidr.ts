@@ -1,6 +1,6 @@
 /** CIDR/subnet calculator — pure math, no upstream calls. IPv4 and IPv6. */
 
-import { expandIpv6 } from '$lib/server/dns';
+import { expandIpv6 } from '#lib/server/dns.js';
 
 export type CidrInfo = {
 	cidr: string;

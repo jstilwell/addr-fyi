@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import Seo from '$lib/components/Seo.svelte';
-	import { PAGES } from '$lib/config/site';
+	import Seo from '#lib/components/Seo.svelte';
+	import { PAGES } from '#lib/config/site.js';
 </script>
 
 <Seo
@@ -26,7 +26,7 @@
 		{/each}
 		<div class="flex flex-col sm:flex-row sm:gap-4">
 			<dt class="shrink-0 sm:w-32">
-				<a href={resolve('/sitemap.xml')} class="text-primary hover:underline">/sitemap.xml</a>
+				<a href={resolve('sitemap.xml')} class="text-primary hover:underline">/sitemap.xml</a>
 			</dt>
 			<dd class="text-muted-foreground">this list as XML, for machines</dd>
 		</div>

@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
-import { dohQuery, isRecordType, ptrLookup, RECORD_TYPES, toArpaName } from '$lib/server/dns';
-import { negotiate } from '$lib/server/respond';
+import { dohQuery, isRecordType, ptrLookup, RECORD_TYPES, toArpaName } from '#lib/server/dns.js';
+import { negotiate } from '#lib/server/respond.js';
 
 /**
  * DNS lookup via DNS-over-HTTPS. Detects what it was given: an IP address

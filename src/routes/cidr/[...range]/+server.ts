@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
-import { calculateCidr, formatCidr } from '$lib/server/cidr';
-import { negotiate } from '$lib/server/respond';
+import { calculateCidr, formatCidr } from '#lib/server/cidr.js';
+import { negotiate } from '#lib/server/respond.js';
 
 /** Subnet calculator, e.g. /cidr/10.0.0.0/24 or /cidr/2001:db8::/48. */
 export const GET: RequestHandler = ({ params, request }) => {

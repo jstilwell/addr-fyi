@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { replaceState } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { FORWARD_RECORD_TYPES } from '$lib/dns-record-types';
-	import Seo from '$lib/components/Seo.svelte';
-	import { site } from '$lib/config/site';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
-	import { Input } from '$lib/components/ui/input';
-	import { Skeleton } from '$lib/components/ui/skeleton';
-	import * as Tabs from '$lib/components/ui/tabs';
+	import { FORWARD_RECORD_TYPES } from '#lib/dns-record-types.js';
+	import Seo from '#lib/components/Seo.svelte';
+	import { site } from '#lib/config/site.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Skeleton } from '#lib/components/ui/skeleton/index.js';
+	import * as Tabs from '#lib/components/ui/tabs/index.js';
 	import Calculator from '@lucide/svelte/icons/calculator';
 	import Check from '@lucide/svelte/icons/check';
 	import CloudSun from '@lucide/svelte/icons/cloud-sun';
@@ -133,19 +133,18 @@
 	const lastRun: Record<string, Record<string, string>> = {};
 
 	// Mirror the open tab (and its last query) into the URL, so any result can
-	// be shared or bookmarked. replaceState: no new history entry per run.
+	// be shared or bookmarked. replace: no new history entry per run.
 	function syncUrl(tab: string) {
 		const search = new URLSearchParams({
 			...(tab !== 'lookup' && { tab }),
 			...lastRun[tab]
 		}).toString();
-		// eslint-disable-next-line svelte/no-navigation-without-resolve -- query-only update of this page, built on resolve('/')
-		replaceState(`${resolve('/')}${search ? `?${search}` : ''}`, {});
+		goto(`${resolve('/')}${search ? `?${search}` : ''}`, { shallow: true, replace: true });
 	}
 
 	/**
 	 * updateUrl: false for the deep-linked run on load — the address bar already
-	 * says what's running, and replaceState can't be called before the router
+	 * says what's running, and a shallow goto can't run before the router
 	 * has finished hydrating.
 	 */
 	async function run(tool: Tool, { updateUrl = true } = {}) {
