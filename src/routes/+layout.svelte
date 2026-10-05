@@ -4,8 +4,8 @@
 	import Coffee from '@lucide/svelte/icons/coffee';
 	import Mail from '@lucide/svelte/icons/mail';
 	import Terminal from '@lucide/svelte/icons/terminal';
-	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
-	import { site } from '$lib/config/site';
+	import ThemeToggle from '#lib/components/ThemeToggle.svelte';
+	import { site } from '#lib/config/site.js';
 
 	let { children } = $props();
 
@@ -68,9 +68,9 @@
 		</p>
 		<span class="select-none">&bull;</span>
 		<div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-			<a href={resolve('/privacy')} class="hover:text-foreground transition-colors">privacy</a>
-			<a href={resolve('/terms')} class="hover:text-foreground transition-colors">terms</a>
-			<a href={resolve('/sitemap')} class="hover:text-foreground transition-colors">sitemap</a>
+			<a href={resolve('privacy')} class="hover:text-foreground transition-colors">privacy</a>
+			<a href={resolve('terms')} class="hover:text-foreground transition-colors">terms</a>
+			<a href={resolve('sitemap')} class="hover:text-foreground transition-colors">sitemap</a>
 			<!-- eslint-disable svelte/no-navigation-without-resolve -- external donate link -->
 			<a
 				href={site.donateUrl}

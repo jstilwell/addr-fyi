@@ -1,10 +1,10 @@
 import type { RequestHandler } from './$types';
-import { formatWhois, lookupWhois } from '$lib/server/rdap';
-import { negotiate } from '$lib/server/respond';
+import { formatWhois, lookupWhois } from '#lib/server/rdap.js';
+import { negotiate } from '#lib/server/respond.js';
 
 /** WHOIS via RDAP: accepts an IP, a domain, or an ASN (e.g. AS13335). */
-export const GET: RequestHandler = async ({ params, fetch, request, platform }) => {
-	const result = await lookupWhois(params.query, fetch, platform);
+export const GET: RequestHandler = async ({ params, fetch, request }) => {
+	const result = await lookupWhois(params.query, fetch);
 
 	if (!result.ok) {
 		return negotiate(request, { error: result.error }, `Error: ${result.error}\n`, result.status);

@@ -1,10 +1,10 @@
 import type { RequestHandler } from './$types';
-import { getClientInfo } from '$lib/server/client-info';
-import { kvText, negotiate } from '$lib/server/respond';
+import { getClientInfo } from '#lib/server/client-info.js';
+import { kvText, negotiate } from '#lib/server/respond.js';
 
 /** The visitor's own geolocation from request.cf — no upstream lookup needed. */
-export const GET: RequestHandler = ({ request, platform, getClientAddress }) => {
-	const info = getClientInfo(request, platform?.cf, getClientAddress());
+export const GET: RequestHandler = ({ request, getClientAddress }) => {
+	const info = getClientInfo(request, request.cf, getClientAddress());
 
 	return negotiate(
 		request,

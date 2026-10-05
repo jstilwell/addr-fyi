@@ -1,6 +1,8 @@
-import type { Handle, RequestEvent } from '@sveltejs/kit';
-import { site } from '$lib/config/site';
-import { negotiate } from '$lib/server/respond';
+import { env } from 'cloudflare:workers';
+import type { Handle } from '@sveltejs/kit/hooks';
+import type { RequestEvent } from '@sveltejs/kit';
+import { site } from '#lib/config/site.js';
+import { negotiate } from '#lib/server/respond.js';
 
 /** Routes that call a rate-limited upstream (ip-api, RDAP, DoH, Open-Meteo). */
 const LIMITED_ROUTE = /^\/(find|whois|dns|weather)(\/|$)/;
@@ -21,8 +23,8 @@ const visitorScheme = (request: Request): string | null => {
 	}
 };
 
-const rateLimited = async ({ platform, getClientAddress }: RequestEvent): Promise<boolean> => {
-	const limiter = platform?.env?.LOOKUP_LIMITER;
+const rateLimited = async ({ getClientAddress }: RequestEvent): Promise<boolean> => {
+	const limiter = env.LOOKUP_LIMITER;
 	if (!limiter) return false;
 	try {
 		const { success } = await limiter.limit({ key: getClientAddress() });
