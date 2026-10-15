@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { curlCommand } from '#lib/curl.js';
+	import CopyButton from '#lib/components/CopyButton.svelte';
 
 	// Browsers only: curl and JSON clients get a one-line error from hooks.server.ts.
 	const notFound = $derived(page.status === 404);
+	const command = $derived(curlCommand(`addr.fyi${page.url.pathname}`, '-I'));
 </script>
 
 <svelte:head>
@@ -24,7 +27,7 @@
 	</p>
 	<pre class="bg-card text-muted-foreground overflow-x-auto rounded-md p-3 text-sm"><span
 			class="text-primary select-none">$&nbsp;</span
-		>curl -I addr.fyi{page.url.pathname}
+		>{command}<CopyButton text={command} class="ml-2 align-middle" />
 HTTP/1.1 {page.status}</pre>
 	<p class="text-sm">
 		<a href={resolve('/')} class="text-primary hover:underline">← back to addr.fyi</a>

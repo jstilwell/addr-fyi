@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import CopyButton from '#lib/components/CopyButton.svelte';
 	import Seo from '#lib/components/Seo.svelte';
 	import { PAGES } from '#lib/config/site.js';
 </script>
@@ -35,6 +36,7 @@
 		The plaintext API endpoints live under the <a
 			href={resolve('/')}
 			class="text-primary hover:underline">api tab on the home page</a
-		>, or <code>curl addr.fyi/sitemap</code> for this list.
+		>, or <code>curl addr.fyi/sitemap</code>
+		<CopyButton text="curl addr.fyi/sitemap" class="align-middle" /> for this list.
 	</p>
 </section>
