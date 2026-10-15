@@ -4,6 +4,8 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { FORWARD_RECORD_TYPES } from '#lib/dns-record-types.js';
+	import { curlCommand } from '#lib/curl.js';
+	import CopyButton from '#lib/components/CopyButton.svelte';
 	import Seo from '#lib/components/Seo.svelte';
 	import { site } from '#lib/config/site.js';
 	import { Badge } from '#lib/components/ui/badge/index.js';
@@ -158,7 +160,7 @@
 		if (updateUrl) syncUrl(tool.id);
 
 		const path = tool.path(query);
-		commands[tool.id] = `curl ${host}${path}`;
+		commands[tool.id] = curlCommand(`${host}${path}`);
 		running[tool.id] = true;
 		failed[tool.id] = false;
 		outputs[tool.id] = '';
@@ -298,17 +300,9 @@
 		{ path: '/health', example: '/health', desc: 'liveness check' }
 	]);
 
-	// Per-endpoint "copied" feedback for the api tab copy buttons.
-	let copiedEndpoint = $state<string | null>(null);
-
-	async function copyEndpoint(example: string) {
-		// Copy a runnable curl against the current host (matches the rest of the page).
-		if (!(await copyText(`curl ${host}${example}`))) return;
-		copiedEndpoint = example;
-		setTimeout(() => {
-			if (copiedEndpoint === example) copiedEndpoint = null;
-		}, 1500);
-	}
+	// The command each tool shows before it has run, using its placeholder query.
+	const placeholderCommand = (tool: Tool) => curlCommand(`${host}${tool.path(tool.placeholder)}`);
+	const headersCommand = curlCommand(`${host}/headers`);
 </script>
 
 <Seo title="addr.fyi — your IP and quick network lookups" description={site.description} path="/" />
@@ -434,14 +428,18 @@
 								whois accepts a domain, an IP address, or an ASN:
 							</p>
 							{#each whoisExamples as example (example.query)}
-								<button
-									type="button"
-									class="text-muted-foreground hover:text-foreground text-left transition-colors"
-									onclick={() => runWhoisExample(example.query)}
-								>
-									<span class="text-primary select-none">$&nbsp;</span>curl {host}/whois/{example.query}
+								{@const command = curlCommand(`${host}/whois/${example.query}`)}
+								<div class="flex flex-wrap items-center gap-x-2">
+									<button
+										type="button"
+										class="text-muted-foreground hover:text-foreground text-left transition-colors"
+										onclick={() => runWhoisExample(example.query)}
+									>
+										<span class="text-primary select-none">$&nbsp;</span>{command}
+									</button>
+									<CopyButton text={command} />
 									<span class="text-muted-foreground/70"># {example.kind}</span>
-								</button>
+								</div>
 							{/each}
 						</div>
 					{/if}
@@ -456,22 +454,28 @@
 								dns accepts a domain name or an IP address:
 							</p>
 							{#each dnsExamples as example (example.query)}
-								<button
-									type="button"
-									class="text-muted-foreground hover:text-foreground text-left transition-colors"
-									onclick={() => runDnsExample(example.query)}
-								>
-									<span class="text-primary select-none">$&nbsp;</span>curl {host}/dns/{example.query}
+								{@const command = curlCommand(`${host}/dns/${example.query}`)}
+								<div class="flex flex-wrap items-center gap-x-2">
+									<button
+										type="button"
+										class="text-muted-foreground hover:text-foreground text-left transition-colors"
+										onclick={() => runDnsExample(example.query)}
+									>
+										<span class="text-primary select-none">$&nbsp;</span>{command}
+									</button>
+									<CopyButton text={command} />
 									<span class="text-muted-foreground/70"># {example.kind}</span>
-								</button>
+								</div>
 							{/each}
 						</div>
 					{/if}
 
 					{#if commands[tool.id]}
 						<div class="flex flex-col gap-1 text-sm">
-							<p class="text-muted-foreground">
-								<span class="text-primary select-none">$&nbsp;</span>{commands[tool.id]}
+							<p class="text-muted-foreground flex items-center gap-2">
+								<span><span class="text-primary select-none">$&nbsp;</span>{commands[tool.id]}</span
+								>
+								<CopyButton text={commands[tool.id]} />
 							</p>
 							{#if running[tool.id]}
 								<div
@@ -493,10 +497,13 @@
 							{/if}
 						</div>
 					{:else if tool.id !== 'whois' && tool.id !== 'dns'}
-						<p class="text-muted-foreground text-sm">
-							<span class="text-primary select-none">$&nbsp;</span>curl {host}{tool.path(
-								tool.placeholder
-							)}
+						<p class="text-muted-foreground flex items-center gap-2 text-sm">
+							<span
+								><span class="text-primary select-none">$&nbsp;</span>{placeholderCommand(
+									tool
+								)}</span
+							>
+							<CopyButton text={placeholderCommand(tool)} />
 						</p>
 					{/if}
 				</Card.Content>
@@ -507,8 +514,9 @@
 	<Tabs.Content value="headers">
 		<Card.Root>
 			<Card.Content class="flex flex-col gap-2">
-				<p class="text-muted-foreground text-sm">
-					<span class="text-primary select-none">$&nbsp;</span>curl {host}/headers
+				<p class="text-muted-foreground flex items-center gap-2 text-sm">
+					<span><span class="text-primary select-none">$&nbsp;</span>{headersCommand}</span>
+					<CopyButton text={headersCommand} />
 				</p>
 				<pre
 					class="bg-background overflow-x-auto rounded-md p-3 text-sm leading-relaxed whitespace-pre-wrap">{headerLines}</pre>
@@ -529,19 +537,7 @@
 				<dl class="flex flex-col gap-2 text-sm">
 					{#each endpoints as endpoint (endpoint.path)}
 						<div class="flex items-start gap-2 sm:gap-4">
-							<button
-								type="button"
-								onclick={() => copyEndpoint(endpoint.example)}
-								aria-label={`Copy curl ${host}${endpoint.example}`}
-								title="Copy curl command"
-								class="text-muted-foreground/60 hover:text-foreground mt-0.5 shrink-0 transition-colors"
-							>
-								{#if copiedEndpoint === endpoint.example}
-									<Check class="text-primary size-3.5" aria-hidden="true" />
-								{:else}
-									<Copy class="size-3.5" aria-hidden="true" />
-								{/if}
-							</button>
+							<CopyButton text={curlCommand(`${host}${endpoint.example}`)} class="mt-0.5" />
 							<div class="flex min-w-0 flex-1 flex-col sm:flex-row sm:gap-4">
 								<dt class="text-primary shrink-0 break-all sm:w-52">{endpoint.path}</dt>
 								<dd class="text-muted-foreground">{endpoint.desc}</dd>
