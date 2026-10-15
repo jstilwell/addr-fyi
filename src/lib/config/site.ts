@@ -7,7 +7,7 @@ export const site = {
 	url: 'https://addr.fyi',
 	description: 'Your IP address and quick network lookups. curl-friendly.',
 	email: 'jesse@stilwe.com',
-	author: 'Jesse Stilwell',
+	author: 'Stilwe LLC',
 	authorUrl: 'https://stilwe.com',
 	donateUrl: 'https://buy.stripe.com/5kQ4gBe7Lc7s68YaqZ4F200',
 	version: __APP_VERSION__
