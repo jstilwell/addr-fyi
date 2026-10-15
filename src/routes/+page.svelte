@@ -139,7 +139,7 @@
 			...(tab !== 'lookup' && { tab }),
 			...lastRun[tab]
 		}).toString();
-		goto(`${resolve('/')}${search ? `?${search}` : ''}`, { shallow: true, replace: true });
+		goto(resolve(search ? `/?${search}` : '/'), { shallow: true, replace: true });
 	}
 
 	/**
