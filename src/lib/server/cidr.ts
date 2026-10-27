@@ -15,7 +15,7 @@ export type CidrInfo = {
 	totalAddresses: string;
 };
 
-const parseIpv4 = (ip: string): number | null => {
+export const parseIpv4 = (ip: string): number | null => {
 	const octets = ip.split('.');
 	if (octets.length !== 4) return null;
 	let value = 0;
@@ -26,12 +26,12 @@ const parseIpv4 = (ip: string): number | null => {
 	return value;
 };
 
-const formatIpv4 = (value: number): string =>
+export const formatIpv4 = (value: number): string =>
 	[24, 16, 8, 0].map((shift) => (value >>> shift) & 0xff).join('.');
 
 const IPV6_MAX = (1n << 128n) - 1n;
 
-const compressIpv6 = (groups: string[]): string => {
+export const compressIpv6 = (groups: string[]): string => {
 	const trimmed = groups.map((g) => g.replace(/^0+(?=.)/, ''));
 	let best = -1;
 	let bestLen = 0;
@@ -54,7 +54,7 @@ const compressIpv6 = (groups: string[]): string => {
 	return `${trimmed.slice(0, best).join(':')}::${trimmed.slice(best + bestLen).join(':')}`;
 };
 
-const formatIpv6 = (value: bigint): string => {
+export const formatIpv6 = (value: bigint): string => {
 	const hex = value.toString(16).padStart(32, '0');
 	const groups = Array.from({ length: 8 }, (_, i) => hex.slice(i * 4, i * 4 + 4));
 	return compressIpv6(groups);

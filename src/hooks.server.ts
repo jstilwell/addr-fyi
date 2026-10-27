@@ -7,7 +7,7 @@ import { negotiate } from '#lib/server/respond.js';
 import { responseCache } from '#lib/server/response-cache.js';
 
 /** Routes that call a rate-limited upstream (ip-api, RDAP, DoH, Open-Meteo). */
-const LIMITED_ROUTE = /^\/(find|whois|dns|weather)(\/|$)/;
+const LIMITED_ROUTE = /^\/(find|whois|dns|weather|mail)(\/|$)/;
 
 const acceptsHtml = (request: Request): boolean =>
 	(request.headers.get('accept') ?? '').includes('text/html');

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { expandIpv6, isRecordType, RECORD_TYPES, toArpaName } from './dns';
+import {
+	expandIpv6,
+	formatPropagation,
+	isRecordType,
+	RECORD_TYPES,
+	toArpaName,
+	type Propagation
+} from './dns';
 
 describe('expandIpv6', () => {
 	it('expands compressed forms', () => {
@@ -61,5 +68,44 @@ describe('isRecordType', () => {
 describe('RECORD_TYPES', () => {
 	it('keeps the order the /dns error message has always listed', () => {
 		expect(RECORD_TYPES.join(', ')).toBe('A, AAAA, CAA, CNAME, MX, NS, PTR, SOA, SRV, TXT');
+	});
+});
+
+describe('formatPropagation', () => {
+	const base: Propagation = {
+		name: 'example.com',
+		type: 'A',
+		consistent: true,
+		resolvers: [
+			{ resolver: 'cloudflare', ok: true, answers: ['104.20.23.154', '172.66.147.243'] },
+			{ resolver: 'google', ok: true, answers: ['104.20.23.154', '172.66.147.243'] },
+			{ resolver: 'adguard', ok: true, answers: ['104.20.23.154', '172.66.147.243'] },
+			{ resolver: 'nextdns', ok: false, error: 'resolver unavailable' }
+		]
+	};
+
+	it('renders agreement (plaintext contract)', () => {
+		expect(formatPropagation(base)).toMatchInlineSnapshot(`
+			"A records for example.com
+			cloudflare  104.20.23.154, 172.66.147.243
+			google      104.20.23.154, 172.66.147.243
+			adguard     104.20.23.154, 172.66.147.243
+			nextdns     (error: resolver unavailable)
+			Consistent: all 3 answering resolvers agree
+			"
+		`);
+	});
+
+	it('flags disagreement and empty answers', () => {
+		const out = formatPropagation({
+			...base,
+			consistent: false,
+			resolvers: [
+				{ resolver: 'cloudflare', ok: true, answers: ['1.1.1.1'] },
+				{ resolver: 'google', ok: true, answers: [] }
+			]
+		});
+		expect(out).toContain('google      (no records)');
+		expect(out).toContain('Inconsistent: resolvers disagree');
 	});
 });
