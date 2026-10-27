@@ -36,8 +36,12 @@
 		/** One line under the input saying what the tool does. */
 		hint?: string;
 		path: (query: string) => string;
-		/** false = the tool takes no query (e.g. weather); default true. */
-		requiresInput?: boolean;
+		/**
+		 * 'optional': the query may be left empty (vpn then checks your own
+		 * connection); 'none': no query field at all (weather). Tools with either
+		 * run the first time their tab opens. Default: a query is required.
+		 */
+		input?: 'optional' | 'none';
 	};
 
 	// Slashes inside the query stay raw (CIDR prefixes); each piece is escaped.
@@ -50,6 +54,15 @@
 			hotkey: 'l',
 			placeholder: '8.8.8.8',
 			path: (q) => `/find/${encodeSegment(q)}`
+		},
+		{
+			id: 'vpn',
+			label: 'vpn',
+			hotkey: 'n',
+			placeholder: 'blank for your own connection, or any IP',
+			hint: 'VPN, proxy, Tor and datacenter signals for an address; your own connection also gets WebRTC and timezone leak checks in this browser',
+			input: 'optional',
+			path: (q) => (q ? `/vpn/${encodeSegment(q)}` : '/vpn')
 		},
 		{
 			id: 'dns',
@@ -141,7 +154,7 @@
 			label: 'weather',
 			hotkey: 'e',
 			placeholder: '',
-			requiresInput: false,
+			input: 'none',
 			path: () => '/weather'
 		}
 	];
@@ -199,9 +212,10 @@
 	);
 
 	function onTabChange(value: string) {
-		// Weather needs no input — fetch it the first time the tab opens.
-		if (value === 'weather' && !outputs.weather && !running.weather) {
-			void run(tools.find((t) => t.id === 'weather')!);
+		// Tools that work without a query (weather, vpn) run the first time the tab opens.
+		const tool = tools.find((t) => t.id === value);
+		if (tool?.input && !commands[value] && !running[value]) {
+			void run(tool);
 		} else {
 			syncUrl(value);
 		}
@@ -248,7 +262,7 @@
 	 */
 	async function run(tool: Tool, { updateUrl = true } = {}) {
 		const query = inputs[tool.id].trim();
-		if ((query === '' && (tool.requiresInput ?? true)) || running[tool.id]) return;
+		if ((query === '' && !tool.input) || running[tool.id]) return;
 
 		lastRun[tool.id] = {
 			...(query && { q: query }),
@@ -262,6 +276,11 @@
 		running[tool.id] = true;
 		failed[tool.id] = false;
 		outputs[tool.id] = '';
+		// The browser checks are about this browser, so only for your own connection.
+		if (tool.id === 'vpn') {
+			if (query) browserChecks = null;
+			else void checkBrowser();
+		}
 
 		try {
 			// No Accept header: the panel renders exactly what curl would print.
@@ -274,6 +293,110 @@
 		} finally {
 			running[tool.id] = false;
 		}
+	}
+
+	// vpn tab: what a site can see from inside the browser, which curl never
+	// shows. A mismatch is how sites spot a VPN, or how a VPN leaks.
+	type BrowserCheck = { label: string; value: string; flagged: boolean };
+	let browserChecks = $state<BrowserCheck[] | null>(null);
+	let checkingBrowser = $state(false);
+
+	/** "UTC+02:00" for a zone right now (DST included), or null if it's unknown. */
+	function utcOffset(timeZone: string): string | null {
+		try {
+			const name = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'longOffset' })
+				.formatToParts(new Date())
+				.find((part) => part.type === 'timeZoneName')?.value;
+			return name ? name.replace(/^GMT/, 'UTC') : null;
+		} catch {
+			return null;
+		}
+	}
+
+	function timezoneCheck(): BrowserCheck {
+		const label = 'Timezone';
+		const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+		const ipZone = data.client.timezone;
+		if (!ipZone)
+			return { label, value: `${browserZone} (no IP timezone to compare)`, flagged: false };
+		const browserOffset = utcOffset(browserZone);
+		const ipOffset = utcOffset(ipZone);
+		// Compare offsets, not names: America/Detroit and America/New_York agree.
+		return browserOffset === ipOffset
+			? { label, value: `${browserZone} matches your IP's location`, flagged: false }
+			: {
+					label,
+					value: `browser says ${browserZone} (${browserOffset}), your IP is in ${ipZone} (${ipOffset}) — sites can use this to spot a VPN`,
+					flagged: true
+				};
+	}
+
+	/** Public addresses STUN sees for this browser, or null without WebRTC. */
+	async function stunAddresses(): Promise<string[] | null> {
+		if (typeof RTCPeerConnection === 'undefined') return null;
+		const peer = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }] });
+		const found: string[] = [];
+		try {
+			peer.createDataChannel('');
+			await new Promise<void>((resolve) => {
+				const timer = setTimeout(resolve, 3000);
+				peer.onicecandidate = ({ candidate }) => {
+					if (!candidate) {
+						clearTimeout(timer);
+						resolve();
+					} else if (candidate.type === 'srflx') {
+						// Server-reflexive: the address the STUN server saw us come from.
+						const address = candidate.address ?? candidate.candidate.split(' ')[4];
+						if (!found.includes(address)) found.push(address);
+					}
+				};
+				peer
+					.createOffer()
+					.then((offer) => peer.setLocalDescription(offer))
+					.catch(() => resolve());
+			});
+		} finally {
+			peer.close();
+		}
+		return found;
+	}
+
+	async function webrtcCheck(): Promise<BrowserCheck> {
+		const label = 'WebRTC';
+		const addresses = await stunAddresses();
+		if (addresses === null) return { label, value: 'disabled in this browser', flagged: false };
+		if (addresses.length === 0)
+			return { label, value: 'no public address exposed', flagged: false };
+
+		// Only same-family addresses compare: a dual-stack browser may load this
+		// page over IPv6 and reach STUN over IPv4, both its own.
+		const isV6 = (ip: string) => ip.includes(':');
+		const pageIp = data.client.ip;
+		const comparable = addresses.filter((ip) => isV6(ip) === isV6(pageIp));
+		const leaked = comparable.filter((ip) => ip !== pageIp);
+		if (leaked.length) {
+			return {
+				label,
+				value: `exposes ${leaked.join(', ')}, not the ${pageIp} this page sees — on a VPN, that is likely your real address leaking`,
+				flagged: true
+			};
+		}
+		return {
+			label,
+			value: comparable.length
+				? `exposes ${addresses.join(', ')}, matching the address this page sees`
+				: `exposes ${addresses.join(', ')} — a different IP version from this page's, so nothing to compare`,
+			flagged: false
+		};
+	}
+
+	async function checkBrowser() {
+		if (checkingBrowser) return;
+		checkingBrowser = true;
+		const checks = [timezoneCheck(), await webrtcCheck()];
+		checkingBrowser = false;
+		// Someone may have typed an address while STUN was answering.
+		if (inputs.vpn.trim() === '') browserChecks = checks;
 	}
 
 	/** Copy text; false when the browser refuses (insecure context, denied permission). */
@@ -323,7 +446,7 @@
 		}
 		if (tool.id === 'dns') dnsCompare = params.get('resolvers') === 'all';
 		if (q) inputs[tool.id] = q;
-		if (q || tool.requiresInput === false) void run(tool, { updateUrl: false });
+		if (q || tool.input) void run(tool, { updateUrl: false });
 	});
 
 	const geoLine = $derived(
@@ -375,11 +498,17 @@
 	const endpoints = $derived<{ path: string; example: string; desc: string }[]>([
 		{ path: '/', example: '/', desc: 'your IP address' },
 		{ path: '/geo', example: '/geo', desc: 'your IP + geolocation (from the edge, no lookup)' },
+		{ path: '/vpn', example: '/vpn', desc: 'are you on a VPN, proxy or Tor? (plus proxy headers)' },
 		{ path: '/json', example: '/json', desc: 'everything we know about you, as JSON' },
 		{
 			path: '/find/{ip}',
 			example: `/find/${clientIpv4 ?? '8.8.8.8'}`,
 			desc: 'geolocate any IP or hostname'
+		},
+		{
+			path: '/vpn/{ip}',
+			example: '/vpn/1.1.1.1',
+			desc: 'VPN, proxy, Tor exit and datacenter flags for any IP'
 		},
 		{
 			path: '/dns/{name|ip}?type=MX',
@@ -438,8 +567,10 @@
 		{ path: '/health', example: '/health', desc: 'liveness check' }
 	]);
 
-	// The command each tool shows before it has run, using its placeholder query.
-	const placeholderCommand = (tool: Tool) => curlCommand(`${host}${tool.path(tool.placeholder)}`);
+	// The command each tool shows before it has run, using its placeholder query
+	// (a query-optional tool's placeholder is prose, so it shows the bare form).
+	const placeholderCommand = (tool: Tool) =>
+		curlCommand(`${host}${tool.path(tool.input ? '' : tool.placeholder)}`);
 	const headersCommand = curlCommand(`${host}/headers`);
 </script>
 
@@ -523,7 +654,7 @@
 						void run(tool);
 					}}
 				>
-					{#if tool.requiresInput ?? true}
+					{#if tool.input !== 'none'}
 						<Input
 							bind:ref={inputRefs[tool.id]}
 							bind:value={inputs[tool.id]}
@@ -546,7 +677,7 @@
 						</select>
 					{/if}
 					<Button type="submit" disabled={running[tool.id]} class="font-bold">
-						{running[tool.id] ? 'running…' : (tool.requiresInput ?? true) ? 'run' : 'refresh'}
+						{running[tool.id] ? 'running…' : tool.input === 'none' ? 'refresh' : 'run'}
 					</Button>
 				</form>
 
@@ -650,6 +781,24 @@
 						>
 						<CopyButton text={placeholderCommand(tool)} />
 					</p>
+				{/if}
+
+				{#if tool.id === 'vpn' && (browserChecks || checkingBrowser)}
+					<div class="flex flex-col gap-1.5 text-sm">
+						<p class="text-muted-foreground text-xs">
+							checked in this browser (curl can't see these):
+						</p>
+						{#if checkingBrowser}
+							<Skeleton class="h-3.5 w-1/2" aria-label="Running browser checks" />
+						{:else if browserChecks}
+							{#each browserChecks as check (check.label)}
+								<p>
+									<span class="text-muted-foreground">{check.label}:</span>
+									<span class={check.flagged ? 'text-ansi-yellow' : ''}>{check.value}</span>
+								</p>
+							{/each}
+						{/if}
+					</div>
 				{/if}
 			</Panel>
 		</Tabs.Content>
