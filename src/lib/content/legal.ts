@@ -13,7 +13,7 @@ export type LegalDoc = {
 
 export const PRIVACY: LegalDoc = {
 	title: 'Privacy',
-	updated: '2026-09-26',
+	updated: '2026-10-27',
 	sections: [
 		{
 			heading: 'The short version',
@@ -37,7 +37,8 @@ export const PRIVACY: LegalDoc = {
 		{
 			heading: 'Lookups you run',
 			body: [
-				'Queries you submit to the lookup tools are forwarded to third-party services to be answered: geolocation lookups to ip-api.com, WHOIS lookups to the authoritative RDAP registry (via rdap.org), and DNS lookups to Cloudflare DNS-over-HTTPS. Only the query itself (the IP, domain, or ASN you typed) is forwarded — not your identity.',
+				'Queries you submit to the lookup tools are forwarded to third-party services to be answered: geolocation lookups to ip-api.com, WHOIS lookups to the authoritative RDAP registry (via rdap.org), DNS and mail checks to Cloudflare DNS-over-HTTPS (and, when you ask to compare resolvers, to Google, AdGuard and NextDNS too), routing lookups to RIPEstat, and certificate lookups to Cert Spotter or crt.sh. Only the query itself (the IP, domain, ASN or address you typed) is forwarded — not your identity.',
+				"The http tool fetches the URL you give it from Cloudflare's network, identifying itself as addr.fyi; the site you name sees that request, not your IP. The mail tool likewise fetches a domain's MTA-STS policy file. The port tool opens a single TCP connection back to your own IP address, on the port you choose, and to nothing else. MAC lookups use a copy of the IEEE registry stored with the site, so the addresses you look up are not sent anywhere.",
 				'The weather tool sends the approximate coordinates derived from your IP by Cloudflare to Open-Meteo (and, for US locations, to the National Weather Service for alerts).',
 				'Lookup results are cached at the Cloudflare edge (from minutes for weather to a few hours for lookups) so repeated queries are fast; the cache stores the answer, not who asked.'
 			]
@@ -51,7 +52,7 @@ export const PRIVACY: LegalDoc = {
 
 export const TERMS: LegalDoc = {
 	title: 'Terms of Service',
-	updated: '2026-09-26',
+	updated: '2026-10-27',
 	sections: [
 		{
 			heading: 'The service',
@@ -62,13 +63,13 @@ export const TERMS: LegalDoc = {
 		{
 			heading: 'Fair use',
 			body: [
-				'Scripting against the plaintext API is encouraged — that is what it is for. Flooding it is not: keep automated usage reasonable, and expect rate limiting if you do not. Do not use the service for unlawful purposes or to facilitate abuse of the networks and registries it queries.'
+				'Scripting against the plaintext API is encouraged — that is what it is for. Flooding it is not: keep automated usage reasonable, and expect rate limiting if you do not. Do not use the service for unlawful purposes or to facilitate abuse of the networks, registries and sites it queries.'
 			]
 		},
 		{
 			heading: 'Accuracy',
 			body: [
-				'Lookup results come from third-party sources (ip-api.com, RDAP registries, Cloudflare DNS). Geolocation in particular is an estimate. No accuracy is guaranteed; do not rely on results for anything where being wrong matters.'
+				"Lookup results come from third-party sources (ip-api.com, RDAP registries, public DNS resolvers, RIPEstat, Certificate Transparency logs, the IEEE registry). Geolocation in particular is an estimate, and the http and port tools only show what Cloudflare's network could reach at that moment. No accuracy is guaranteed; do not rely on results for anything where being wrong matters."
 			]
 		},
 		{
