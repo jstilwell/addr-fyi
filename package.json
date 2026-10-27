@@ -19,7 +19,8 @@
 		"test:watch": "vitest",
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
-		"update": "ncu -u -t semver && rm -rf node_modules && npm install && npm audit fix"
+		"update": "ncu -u -t semver && rm -rf node_modules && npm install && npm audit fix",
+		"update-oui": "node scripts/update-oui.js"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.1.1",

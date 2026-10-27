@@ -6,8 +6,8 @@ import { site } from '#lib/config/site.js';
 import { negotiate } from '#lib/server/respond.js';
 import { responseCache } from '#lib/server/response-cache.js';
 
-/** Routes that call a rate-limited upstream (ip-api, RDAP, DoH, Open-Meteo). */
-const LIMITED_ROUTE = /^\/(find|whois|dns|weather|mail)(\/|$)/;
+/** Routes that call a rate-limited upstream (ip-api, RDAP, DoH, Open-Meteo, RIPEstat, CT logs). */
+const LIMITED_ROUTE = /^\/(find|whois|dns|weather|mail|bgp|certs)(\/|$)/;
 
 const acceptsHtml = (request: Request): boolean =>
 	(request.headers.get('accept') ?? '').includes('text/html');
