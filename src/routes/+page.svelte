@@ -1,30 +1,23 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { FORWARD_RECORD_TYPES } from '#lib/dns-record-types.js';
 	import { curlCommand } from '#lib/curl.js';
 	import CopyButton from '#lib/components/CopyButton.svelte';
+	import Panel from '#lib/components/Panel.svelte';
 	import Seo from '#lib/components/Seo.svelte';
 	import { site } from '#lib/config/site.js';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
-	import * as Card from '#lib/components/ui/card/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 	import { Skeleton } from '#lib/components/ui/skeleton/index.js';
 	import * as Tabs from '#lib/components/ui/tabs/index.js';
-	import Calculator from '@lucide/svelte/icons/calculator';
 	import Check from '@lucide/svelte/icons/check';
-	import CloudSun from '@lucide/svelte/icons/cloud-sun';
 	import Copy from '@lucide/svelte/icons/copy';
-	import FileSearch from '@lucide/svelte/icons/file-search';
-	import FileText from '@lucide/svelte/icons/file-text';
-	import Globe from '@lucide/svelte/icons/globe';
 	import MapPin from '@lucide/svelte/icons/map-pin';
 	import Network from '@lucide/svelte/icons/network';
-	import Search from '@lucide/svelte/icons/search';
-	import Terminal from '@lucide/svelte/icons/terminal';
 
 	let { data } = $props();
 
@@ -37,7 +30,8 @@
 	type Tool = {
 		id: string;
 		label: string;
-		icon: typeof Search;
+		/** Keyboard shortcut: a letter of the label, pressed to open the tab. */
+		hotkey: string;
 		placeholder: string;
 		path: (query: string) => string;
 		/** false = the tool takes no query (e.g. weather); default true. */
@@ -48,14 +42,14 @@
 		{
 			id: 'lookup',
 			label: 'lookup',
-			icon: Search,
+			hotkey: 'l',
 			placeholder: '8.8.8.8',
 			path: (q) => `/find/${encodeSegment(q)}`
 		},
 		{
 			id: 'dns',
 			label: 'dns',
-			icon: Globe,
+			hotkey: 'd',
 			placeholder: 'example.com or 1.1.1.1',
 			// IPs get a reverse (PTR) lookup server-side; the type only applies to names.
 			path: (q) =>
@@ -64,14 +58,14 @@
 		{
 			id: 'whois',
 			label: 'whois',
-			icon: FileSearch,
+			hotkey: 'w',
 			placeholder: 'example.com, 8.8.8.8, or AS13335',
 			path: (q) => `/whois/${encodeSegment(q)}`
 		},
 		{
 			id: 'weather',
 			label: 'weather',
-			icon: CloudSun,
+			hotkey: 'e',
 			placeholder: '',
 			requiresInput: false,
 			path: () => '/weather'
@@ -79,7 +73,7 @@
 		{
 			id: 'cidr',
 			label: 'cidr',
-			icon: Calculator,
+			hotkey: 'c',
 			placeholder: '10.0.0.0/24',
 			// The range's own slash must stay raw in the path; each side is escaped.
 			path: (q) => `/cidr/${q.split('/').map(encodeSegment).join('/')}`
@@ -129,7 +123,48 @@
 				: 'your address'
 	);
 
-	const TABS = [...tools.map((t) => t.id), 'headers', 'api'];
+	// The tab bar: every tool, then the two read-only tabs.
+	const menu: { id: string; label: string; hotkey: string }[] = [
+		...tools,
+		{ id: 'headers', label: 'headers', hotkey: 'h' },
+		{ id: 'api', label: 'api', hotkey: 'a' }
+	];
+	const TABS = menu.map((item) => item.id);
+
+	// Seeded with null: bind:ref on the Input refuses an undefined start value.
+	let inputRefs = $state<Record<string, HTMLInputElement | null>>(
+		Object.fromEntries(tools.map((t) => [t.id, null]))
+	);
+
+	function onTabChange(value: string) {
+		// Weather needs no input — fetch it the first time the tab opens.
+		if (value === 'weather' && !outputs.weather && !running.weather) {
+			void run(tools.find((t) => t.id === 'weather')!);
+		} else {
+			syncUrl(value);
+		}
+	}
+
+	// Single-key navigation: press a tab's hotkey (its underlined letter) to open it
+	// (and land in its query field). Ignored while typing, so it never steals
+	// keystrokes; Escape leaves a field to get the hotkeys back.
+	async function onKeydown(event: KeyboardEvent) {
+		const target = event.target as HTMLElement;
+		if (target.closest('input, select, textarea, [contenteditable]')) {
+			if (event.key === 'Escape') target.blur();
+			return;
+		}
+		if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
+		const item = menu.find((m) => m.hotkey === event.key.toLowerCase());
+		if (!item) return;
+		event.preventDefault();
+		if (activeTab !== item.id) {
+			activeTab = item.id;
+			onTabChange(item.id);
+		}
+		await tick();
+		inputRefs[item.id]?.focus();
+	}
 
 	// What each tool last ran, so the address bar can reflect the open tab.
 	const lastRun: Record<string, Record<string, string>> = {};
@@ -307,46 +342,51 @@
 
 <Seo title="addr.fyi — your IP and quick network lookups" description={site.description} path="/" />
 
+<svelte:window onkeydown={onKeydown} />
+
 <p class="sr-only" aria-live="polite">{announcement}</p>
 
 <!-- Hero: the same answer curl gets, rendered. -->
 <section aria-label="Your IP address">
-	<p class="text-muted-foreground mb-3 text-xs tracking-[0.25em] uppercase">{ipVersionLabel}</p>
+	<p class="text-muted-foreground mb-3 text-xs tracking-[0.25em] uppercase">
+		<span class="text-ansi-magenta">//</span>
+		{ipVersionLabel}
+	</p>
 	<button
 		class="group flex flex-wrap items-center gap-x-4 gap-y-2 text-left"
 		onclick={copyIp}
 		title="Copy to clipboard"
 	>
-		<span class="text-primary text-4xl font-bold break-all sm:text-5xl">
+		<span class="text-glow text-4xl font-bold break-all sm:text-5xl">
 			{data.client.ip}
 		</span>
 		<span class="text-muted-foreground group-hover:text-foreground transition-colors">
 			{#if copied}
-				<Check class="text-primary size-5" aria-label="Copied" />
+				<Check class="text-ansi-green size-5" aria-label="Copied" />
 			{:else}
 				<Copy class="size-5" aria-label="Copy IP" />
 			{/if}
 		</span>
 	</button>
-	<div class="mt-4 flex flex-wrap items-center gap-2 text-sm">
+	<div class="mt-4 flex flex-wrap items-center gap-2">
 		{#if geoLine}
-			<Badge variant="outline" class="text-muted-foreground gap-1.5 font-normal">
-				<MapPin class="size-3.5" aria-hidden="true" />{geoLine}
+			<Badge variant="outline" class="text-muted-foreground bg-card/60 gap-1.5 font-normal">
+				<MapPin class="text-ansi-magenta size-3.5" aria-hidden="true" />{geoLine}
 			</Badge>
 		{/if}
 		{#if data.client.asn}
 			<button type="button" onclick={() => lookupAsn(data.client.asn!)} title="Look up this ASN">
 				<Badge
 					variant="outline"
-					class="text-muted-foreground hover:text-foreground hover:border-foreground/30 gap-1.5 font-normal transition-colors"
+					class="text-muted-foreground hover:text-foreground hover:border-foreground/30 bg-card/60 gap-1.5 font-normal transition-colors"
 				>
-					<Network class="size-3.5" aria-hidden="true" />AS{data.client.asn}
+					<Network class="text-ansi-blue size-3.5" aria-hidden="true" />AS{data.client.asn}
 					{data.client.org}
 				</Badge>
 			</button>
 		{/if}
 		{#if data.client.colo}
-			<Badge variant="outline" class="text-muted-foreground font-normal">
+			<Badge variant="outline" class="text-muted-foreground bg-card/60 font-normal">
 				edge: {data.client.colo}
 			</Badge>
 		{/if}
@@ -354,198 +394,175 @@
 </section>
 
 <!-- Tools -->
-<Tabs.Root
-	bind:value={activeTab}
-	onValueChange={(value) => {
-		// Weather needs no input — fetch it the first time the tab opens.
-		if (value === 'weather' && !outputs.weather && !running.weather) {
-			void run(tools.find((t) => t.id === 'weather')!);
-		} else {
-			syncUrl(value);
-		}
-	}}
->
-	<Tabs.List class="no-scrollbar w-full justify-start overflow-x-auto overflow-y-hidden">
-		{#each tools as tool (tool.id)}
-			<Tabs.Trigger value={tool.id} class="gap-1.5">
-				<tool.icon class="size-3.5" aria-hidden="true" />{tool.label}
+<Tabs.Root bind:value={activeTab} onValueChange={onTabChange} class="gap-4">
+	<!-- Each tab's hotkey letter is underlined, menu-accelerator style. -->
+	<Tabs.List class="no-scrollbar w-full justify-start overflow-x-auto overflow-y-hidden border-b">
+		{#each menu as item (item.id)}
+			{@const at = item.label.indexOf(item.hotkey)}
+			<Tabs.Trigger value={item.id} aria-keyshortcuts={item.hotkey}>
+				<span
+					>{item.label.slice(0, at)}<span
+						class="decoration-foreground/30 underline underline-offset-4">{item.hotkey}</span
+					>{item.label.slice(at + 1)}</span
+				>
 			</Tabs.Trigger>
 		{/each}
-		<Tabs.Trigger value="headers" class="gap-1.5">
-			<FileText class="size-3.5" aria-hidden="true" />headers
-		</Tabs.Trigger>
-		<Tabs.Trigger value="api" class="gap-1.5">
-			<Terminal class="size-3.5" aria-hidden="true" />api
-		</Tabs.Trigger>
 	</Tabs.List>
 
 	{#each tools as tool (tool.id)}
 		<Tabs.Content value={tool.id}>
-			<Card.Root>
-				<Card.Content class="flex flex-col gap-4">
-					<form
-						class="flex flex-col gap-2 sm:flex-row"
-						onsubmit={(e) => {
-							e.preventDefault();
-							void run(tool);
-						}}
-					>
-						{#if tool.requiresInput ?? true}
-							<Input
-								bind:value={inputs[tool.id]}
-								placeholder={tool.placeholder}
-								autocomplete="off"
-								autocapitalize="off"
-								spellcheck={false}
-								aria-label={`${tool.label} query`}
-							/>
-						{/if}
-						{#if tool.id === 'dns' && !dnsInputIsIp}
-							<select
-								bind:value={dnsType}
-								aria-label="Record type"
-								class="border-input h-9 rounded-md border bg-transparent px-2 text-sm"
-							>
-								{#each FORWARD_RECORD_TYPES as type (type)}
-									<option value={type}>{type}</option>
-								{/each}
-							</select>
-						{/if}
-						<Button type="submit" disabled={running[tool.id]} class="font-bold">
-							{running[tool.id] ? 'running…' : (tool.requiresInput ?? true) ? 'run' : 'refresh'}
-						</Button>
-					</form>
+			<Panel class="flex flex-col gap-4">
+				<form
+					class="flex flex-col gap-2 sm:flex-row"
+					onsubmit={(e) => {
+						e.preventDefault();
+						void run(tool);
+					}}
+				>
+					{#if tool.requiresInput ?? true}
+						<Input
+							bind:ref={inputRefs[tool.id]}
+							bind:value={inputs[tool.id]}
+							placeholder={tool.placeholder}
+							autocomplete="off"
+							autocapitalize="off"
+							spellcheck={false}
+							aria-label={`${tool.label} query`}
+						/>
+					{/if}
+					{#if tool.id === 'dns' && !dnsInputIsIp}
+						<select
+							bind:value={dnsType}
+							aria-label="Record type"
+							class="border-input h-9 rounded-md border bg-transparent px-2 text-sm"
+						>
+							{#each FORWARD_RECORD_TYPES as type (type)}
+								<option value={type}>{type}</option>
+							{/each}
+						</select>
+					{/if}
+					<Button type="submit" disabled={running[tool.id]} class="font-bold">
+						{running[tool.id] ? 'running…' : (tool.requiresInput ?? true) ? 'run' : 'refresh'}
+					</Button>
+				</form>
 
-					{#if tool.id === 'whois'}
-						<!-- Once a real lookup has run, dim the examples so the actual command
+				{#if tool.id === 'whois'}
+					<!-- Once a real lookup has run, dim the examples so the actual command
 						     above stands out; hover restores full contrast for clicking. -->
-						<div
-							class="flex flex-col gap-1.5 text-sm transition-opacity {commands.whois
-								? 'opacity-50 hover:opacity-100'
-								: ''}"
-						>
-							<p class="text-muted-foreground text-xs">
-								whois accepts a domain, an IP address, or an ASN:
-							</p>
-							{#each whoisExamples as example (example.query)}
-								{@const command = curlCommand(`${host}/whois/${example.query}`)}
-								<div class="flex flex-wrap items-center gap-x-2">
-									<button
-										type="button"
-										class="text-muted-foreground hover:text-foreground text-left transition-colors"
-										onclick={() => runWhoisExample(example.query)}
-									>
-										<span class="text-primary select-none">$&nbsp;</span>{command}
-									</button>
-									<CopyButton text={command} />
-									<span class="text-muted-foreground/70"># {example.kind}</span>
-								</div>
-							{/each}
-						</div>
-					{/if}
-
-					{#if tool.id === 'dns'}
-						<div
-							class="flex flex-col gap-1.5 text-sm transition-opacity {commands.dns
-								? 'opacity-50 hover:opacity-100'
-								: ''}"
-						>
-							<p class="text-muted-foreground text-xs">
-								dns accepts a domain name or an IP address:
-							</p>
-							{#each dnsExamples as example (example.query)}
-								{@const command = curlCommand(`${host}/dns/${example.query}`)}
-								<div class="flex flex-wrap items-center gap-x-2">
-									<button
-										type="button"
-										class="text-muted-foreground hover:text-foreground text-left transition-colors"
-										onclick={() => runDnsExample(example.query)}
-									>
-										<span class="text-primary select-none">$&nbsp;</span>{command}
-									</button>
-									<CopyButton text={command} />
-									<span class="text-muted-foreground/70"># {example.kind}</span>
-								</div>
-							{/each}
-						</div>
-					{/if}
-
-					{#if commands[tool.id]}
-						<div class="flex flex-col gap-1 text-sm">
-							<p class="text-muted-foreground flex items-center gap-2">
-								<span><span class="text-primary select-none">$&nbsp;</span>{commands[tool.id]}</span
-								>
-								<CopyButton text={commands[tool.id]} />
-							</p>
-							{#if running[tool.id]}
-								<div
-									class="bg-background flex flex-col gap-2.5 rounded-md p-3"
-									aria-label="Waiting for results"
-								>
-									<Skeleton class="h-3.5 w-2/5" />
-									<Skeleton class="h-3.5 w-3/5" />
-									<Skeleton class="h-3.5 w-1/2" />
-									<Skeleton class="h-3.5 w-1/3" />
-								</div>
-							{:else}
-								<pre
-									class="bg-background overflow-x-auto rounded-md p-3 leading-relaxed whitespace-pre-wrap {failed[
-										tool.id
-									]
-										? 'text-destructive'
-										: ''}">{outputs[tool.id] || ' '}</pre>
-							{/if}
-						</div>
-					{:else if tool.id !== 'whois' && tool.id !== 'dns'}
-						<p class="text-muted-foreground flex items-center gap-2 text-sm">
-							<span
-								><span class="text-primary select-none">$&nbsp;</span>{placeholderCommand(
-									tool
-								)}</span
-							>
-							<CopyButton text={placeholderCommand(tool)} />
+					<div
+						class="flex flex-col gap-1.5 text-sm transition-opacity {commands.whois
+							? 'opacity-50 hover:opacity-100'
+							: ''}"
+					>
+						<p class="text-muted-foreground text-xs">
+							whois accepts a domain, an IP address, or an ASN:
 						</p>
-					{/if}
-				</Card.Content>
-			</Card.Root>
+						{#each whoisExamples as example (example.query)}
+							{@const command = curlCommand(`${host}/whois/${example.query}`)}
+							<div class="flex flex-wrap items-center gap-x-2">
+								<button
+									type="button"
+									class="text-muted-foreground hover:text-foreground text-left transition-colors"
+									onclick={() => runWhoisExample(example.query)}
+								>
+									<span class="text-primary select-none">$&nbsp;</span>{command}
+								</button>
+								<CopyButton text={command} />
+								<span class="text-muted-foreground/70"># {example.kind}</span>
+							</div>
+						{/each}
+					</div>
+				{/if}
+
+				{#if tool.id === 'dns'}
+					<div
+						class="flex flex-col gap-1.5 text-sm transition-opacity {commands.dns
+							? 'opacity-50 hover:opacity-100'
+							: ''}"
+					>
+						<p class="text-muted-foreground text-xs">dns accepts a domain name or an IP address:</p>
+						{#each dnsExamples as example (example.query)}
+							{@const command = curlCommand(`${host}/dns/${example.query}`)}
+							<div class="flex flex-wrap items-center gap-x-2">
+								<button
+									type="button"
+									class="text-muted-foreground hover:text-foreground text-left transition-colors"
+									onclick={() => runDnsExample(example.query)}
+								>
+									<span class="text-primary select-none">$&nbsp;</span>{command}
+								</button>
+								<CopyButton text={command} />
+								<span class="text-muted-foreground/70"># {example.kind}</span>
+							</div>
+						{/each}
+					</div>
+				{/if}
+
+				{#if commands[tool.id]}
+					<div class="flex flex-col gap-1 text-sm">
+						<p class="text-muted-foreground flex items-center gap-2">
+							<span><span class="text-primary select-none">$&nbsp;</span>{commands[tool.id]}</span>
+							<CopyButton text={commands[tool.id]} />
+						</p>
+						{#if running[tool.id]}
+							<div
+								class="bg-sunken flex flex-col gap-2.5 rounded-lg border p-3"
+								aria-label="Waiting for results"
+							>
+								<Skeleton class="h-3.5 w-2/5" />
+								<Skeleton class="h-3.5 w-3/5" />
+								<Skeleton class="h-3.5 w-1/2" />
+								<Skeleton class="h-3.5 w-1/3" />
+							</div>
+						{:else}
+							<pre
+								class="bg-sunken overflow-x-auto rounded-lg border p-3 leading-relaxed whitespace-pre-wrap {failed[
+									tool.id
+								]
+									? 'text-destructive'
+									: ''}">{outputs[tool.id] || ' '}</pre>
+						{/if}
+					</div>
+				{:else if tool.id !== 'whois' && tool.id !== 'dns'}
+					<p class="text-muted-foreground flex items-center gap-2 text-sm">
+						<span
+							><span class="text-primary select-none">$&nbsp;</span>{placeholderCommand(tool)}</span
+						>
+						<CopyButton text={placeholderCommand(tool)} />
+					</p>
+				{/if}
+			</Panel>
 		</Tabs.Content>
 	{/each}
 
 	<Tabs.Content value="headers">
-		<Card.Root>
-			<Card.Content class="flex flex-col gap-2">
-				<p class="text-muted-foreground flex items-center gap-2 text-sm">
-					<span><span class="text-primary select-none">$&nbsp;</span>{headersCommand}</span>
-					<CopyButton text={headersCommand} />
-				</p>
-				<pre
-					class="bg-background overflow-x-auto rounded-md p-3 text-sm leading-relaxed whitespace-pre-wrap">{headerLines}</pre>
-			</Card.Content>
-		</Card.Root>
+		<Panel class="flex flex-col gap-2">
+			<p class="text-muted-foreground flex items-center gap-2 text-sm">
+				<span><span class="text-primary select-none">$&nbsp;</span>{headersCommand}</span>
+				<CopyButton text={headersCommand} />
+			</p>
+			<pre
+				class="bg-sunken overflow-x-auto rounded-lg border p-3 text-sm leading-relaxed whitespace-pre-wrap">{headerLines}</pre>
+		</Panel>
 	</Tabs.Content>
 
 	<Tabs.Content value="api">
-		<Card.Root>
-			<Card.Header>
-				<Card.Title class="text-base">plaintext api</Card.Title>
-				<Card.Description>
-					Every endpoint speaks plaintext to curl and JSON to
-					<code class="text-foreground">Accept: application/json</code>.
-				</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				<dl class="flex flex-col gap-2 text-sm">
-					{#each endpoints as endpoint (endpoint.path)}
-						<div class="flex items-start gap-2 sm:gap-4">
-							<CopyButton text={curlCommand(`${host}${endpoint.example}`)} class="mt-0.5" />
-							<div class="flex min-w-0 flex-1 flex-col sm:flex-row sm:gap-4">
-								<dt class="text-primary shrink-0 break-all sm:w-52">{endpoint.path}</dt>
-								<dd class="text-muted-foreground">{endpoint.desc}</dd>
-							</div>
+		<Panel title="plaintext api" class="flex flex-col gap-4">
+			<p class="text-muted-foreground text-sm">
+				Every endpoint speaks plaintext to curl and JSON to
+				<code class="text-foreground">Accept: application/json</code>.
+			</p>
+			<dl class="flex flex-col gap-2 text-sm">
+				{#each endpoints as endpoint (endpoint.path)}
+					<div class="flex items-start gap-2 sm:gap-4">
+						<CopyButton text={curlCommand(`${host}${endpoint.example}`)} class="mt-0.5" />
+						<div class="flex min-w-0 flex-1 flex-col sm:flex-row sm:gap-4">
+							<dt class="text-primary shrink-0 break-all sm:w-52">{endpoint.path}</dt>
+							<dd class="text-muted-foreground">{endpoint.desc}</dd>
 						</div>
-					{/each}
-				</dl>
-			</Card.Content>
-		</Card.Root>
+					</div>
+				{/each}
+			</dl>
+		</Panel>
 	</Tabs.Content>
 </Tabs.Root>
