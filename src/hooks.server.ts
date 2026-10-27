@@ -8,7 +8,7 @@ import { responseCache } from '#lib/server/response-cache.js';
 
 /** Routes that call an upstream or open outbound connections (ip-api, RDAP, DoH,
  * Open-Meteo, RIPEstat, CT logs, /http and /port probes). */
-const LIMITED_ROUTE = /^\/(find|whois|dns|weather|mail|bgp|certs|http|port)(\/|$)/;
+const LIMITED_ROUTE = /^\/(find|vpn|whois|dns|weather|mail|bgp|certs|http|port)(\/|$)/;
 
 const acceptsHtml = (request: Request): boolean =>
 	(request.headers.get('accept') ?? '').includes('text/html');
