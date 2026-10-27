@@ -6,6 +6,17 @@ export { isRecordType, RECORD_TYPES, type RecordType };
 
 const DOH_ENDPOINT = 'https://cloudflare-dns.com/dns-query';
 
+/**
+ * Public resolvers that answer DoH JSON over port 443, for the propagation
+ * check (?resolvers=all). Quad9 is absent: its JSON API only listens on 5053.
+ */
+export const RESOLVERS = [
+	{ name: 'cloudflare', endpoint: DOH_ENDPOINT },
+	{ name: 'google', endpoint: 'https://dns.google/resolve' },
+	{ name: 'adguard', endpoint: 'https://dns.adguard-dns.com/resolve' },
+	{ name: 'nextdns', endpoint: 'https://dns.nextdns.io/dns-query' }
+] as const;
+
 const TYPE_NAMES: Record<number, string> = {
 	1: 'A',
 	2: 'NS',
@@ -44,17 +55,15 @@ const RCODE_MESSAGES: Record<number, string> = {
 export const dohQuery = async (
 	fetcher: typeof fetch,
 	name: string,
-	type: RecordType
+	type: RecordType,
+	endpoint: string = DOH_ENDPOINT
 ): Promise<DohResult> => {
 	let data: DohJson;
 	try {
-		const response = await fetcher(
-			`${DOH_ENDPOINT}?name=${encodeURIComponent(name)}&type=${type}`,
-			{
-				headers: { accept: 'application/dns-json' },
-				signal: AbortSignal.timeout(5000)
-			}
-		);
+		const response = await fetcher(`${endpoint}?name=${encodeURIComponent(name)}&type=${type}`, {
+			headers: { accept: 'application/dns-json' },
+			signal: AbortSignal.timeout(5000)
+		});
 		if (!response.ok) {
 			return { ok: false, error: `resolver returned ${response.status}`, status: 502 };
 		}
@@ -132,4 +141,54 @@ export const expandIpv6 = (ip: string): string[] | null => {
 		expanded.push(group.padStart(4, '0').toLowerCase());
 	}
 	return expanded;
+};
+
+export type ResolverAnswer =
+	| { resolver: string; ok: true; answers: string[] }
+	| { resolver: string; ok: false; error: string };
+
+export type Propagation = {
+	name: string;
+	type: RecordType;
+	resolvers: ResolverAnswer[];
+	/** True when every resolver that answered returned the same record set. */
+	consistent: boolean;
+};
+
+/**
+ * Ask every public resolver the same question and compare the answers. Record
+ * sets are compared sorted and without TTLs, which legitimately differ.
+ */
+export const compareResolvers = async (
+	fetcher: typeof fetch,
+	name: string,
+	type: RecordType
+): Promise<Propagation> => {
+	const resolvers = await Promise.all(
+		RESOLVERS.map(async ({ name: resolver, endpoint }): Promise<ResolverAnswer> => {
+			const result = await dohQuery(fetcher, name, type, endpoint);
+			return result.ok
+				? { resolver, ok: true, answers: result.answers.map((a) => a.data).sort() }
+				: { resolver, ok: false, error: result.error };
+		})
+	);
+	const sets = new Set(resolvers.flatMap((r) => (r.ok ? [JSON.stringify(r.answers)] : [])));
+	return { name, type, resolvers, consistent: sets.size <= 1 };
+};
+
+export const formatPropagation = (p: Propagation): string => {
+	const width = Math.max(...p.resolvers.map((r) => r.resolver.length));
+	const lines = p.resolvers.map((r) => {
+		const label = r.resolver.padEnd(width);
+		if (!r.ok) return `${label}  (error: ${r.error})`;
+		return `${label}  ${r.answers.length ? r.answers.join(', ') : '(no records)'}`;
+	});
+	const answered = p.resolvers.filter((r) => r.ok).length;
+	const verdict =
+		answered === 0
+			? 'No resolver answered'
+			: p.consistent
+				? `Consistent: all ${answered} answering resolvers agree`
+				: 'Inconsistent: resolvers disagree (still propagating, or geo/anycast answers)';
+	return [`${p.type} records for ${p.name}`, ...lines, verdict].join('\n') + '\n';
 };
