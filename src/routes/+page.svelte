@@ -33,10 +33,15 @@
 		/** Keyboard shortcut: a letter of the label, pressed to open the tab. */
 		hotkey: string;
 		placeholder: string;
+		/** One line under the input saying what the tool does. */
+		hint?: string;
 		path: (query: string) => string;
 		/** false = the tool takes no query (e.g. weather); default true. */
 		requiresInput?: boolean;
 	};
+
+	// Slashes inside the query stay raw (CIDR prefixes); each piece is escaped.
+	const encodePath = (q: string) => q.split('/').map(encodeSegment).join('/');
 
 	const tools: Tool[] = [
 		{
@@ -52,8 +57,13 @@
 			hotkey: 'd',
 			placeholder: 'example.com or 1.1.1.1',
 			// IPs get a reverse (PTR) lookup server-side; the type only applies to names.
-			path: (q) =>
-				`/dns/${encodeSegment(q)}${dnsInputIsIp || dnsType === 'A' ? '' : `?type=${dnsType}`}`
+			path: (q) => {
+				const params = new URLSearchParams({
+					...(!dnsInputIsIp && dnsType !== 'A' && { type: dnsType }),
+					...(dnsCompare && { resolvers: 'all' })
+				}).toString();
+				return `/dns/${encodeSegment(q)}${params ? `?${params}` : ''}`;
+			}
 		},
 		{
 			id: 'whois',
@@ -63,37 +73,89 @@
 			path: (q) => `/whois/${encodeSegment(q)}`
 		},
 		{
-			id: 'weather',
-			label: 'weather',
-			hotkey: 'e',
-			placeholder: '',
-			requiresInput: false,
-			path: () => '/weather'
+			id: 'bgp',
+			label: 'bgp',
+			hotkey: 'b',
+			placeholder: '1.1.1.1, 1.1.1.0/24, or AS13335',
+			hint: 'an IP or prefix gets its origin network and RPKI status; an ASN gets its prefixes and upstreams',
+			path: (q) => `/bgp/${encodePath(q)}`
 		},
 		{
 			id: 'cidr',
 			label: 'cidr',
 			hotkey: 'c',
 			placeholder: '10.0.0.0/24',
-			// The range's own slash must stay raw in the path; each side is escaped.
-			path: (q) => `/cidr/${q.split('/').map(encodeSegment).join('/')}`
+			path: (q) => `/cidr/${encodePath(q)}`
+		},
+		{
+			id: 'convert',
+			label: 'convert',
+			hotkey: 'v',
+			placeholder: '8.8.8.8, 2001:db8::1, or 134744072',
+			hint: 'every representation of an address (decimal, hex, binary, IPv6 forms) and its scope',
+			path: (q) => `/convert/${encodeSegment(q)}`
+		},
+		{
+			id: 'mail',
+			label: 'mail',
+			hotkey: 'i',
+			placeholder: 'example.com',
+			hint: "a domain's MX, SPF, DMARC, DKIM, MTA-STS, TLS-RPT and BIMI, with problems flagged",
+			path: (q) => `/mail/${encodeSegment(q)}`
+		},
+		{
+			id: 'certs',
+			label: 'certs',
+			hotkey: 's',
+			placeholder: 'example.com',
+			hint: 'unexpired certificates for a domain and its subdomains, from Certificate Transparency logs',
+			path: (q) => `/certs/${encodeSegment(q)}`
+		},
+		{
+			id: 'http',
+			label: 'http',
+			hotkey: 't',
+			placeholder: 'example.com or https://example.com/path',
+			hint: 'redirect chain, headers, timing and a security-header audit, fetched from the edge',
+			// The URL goes in as-is (its own slashes and query string included);
+			// a #fragment never leaves the browser, so it's dropped.
+			path: (q) => `/http/${encodeURI(q.replace(/#.*$/, ''))}`
+		},
+		{
+			id: 'port',
+			label: 'port',
+			hotkey: 'p',
+			placeholder: '22',
+			path: (q) => `/port/${encodeSegment(q)}`
+		},
+		{
+			id: 'mac',
+			label: 'mac',
+			hotkey: 'm',
+			placeholder: '00:1a:2b:3c:4d:5e',
+			hint: 'vendor from the IEEE registry, plus multicast and randomized-address flags',
+			path: (q) => `/mac/${encodeSegment(q)}`
+		},
+		{
+			id: 'weather',
+			label: 'weather',
+			hotkey: 'e',
+			placeholder: '',
+			requiresInput: false,
+			path: () => '/weather'
 		}
 	];
 
 	let activeTab = $state('lookup');
 	let dnsType = $state('A');
+	// dns tab: ask several public resolvers and compare (?resolvers=all).
+	let dnsCompare = $state(false);
 	let copied = $state(false);
 	// Screen-reader announcement for copy feedback (the icons alone are silent).
 	let announcement = $state('');
 
 	// Per-tool state: what was asked, what came back.
-	let inputs = $state<Record<string, string>>({
-		lookup: '',
-		dns: '',
-		weather: '',
-		whois: '',
-		cidr: ''
-	});
+	let inputs = $state<Record<string, string>>(Object.fromEntries(tools.map((t) => [t.id, ''])));
 	let outputs = $state<Record<string, string>>({});
 	let commands = $state<Record<string, string>>({});
 	let running = $state<Record<string, boolean>>({});
@@ -190,7 +252,8 @@
 
 		lastRun[tool.id] = {
 			...(query && { q: query }),
-			...(tool.id === 'dns' && !dnsInputIsIp && dnsType !== 'A' && { type: dnsType })
+			...(tool.id === 'dns' && !dnsInputIsIp && dnsType !== 'A' && { type: dnsType }),
+			...(tool.id === 'dns' && dnsCompare && { resolvers: 'all' })
 		};
 		if (updateUrl) syncUrl(tool.id);
 
@@ -239,8 +302,11 @@
 		if (clientIpv4) {
 			inputs.lookup = clientIpv4;
 			inputs.dns = clientIpv4;
+			inputs.bgp = clientIpv4;
 			inputs.cidr = clientCidr24 ?? '';
 		}
+		// Any address family converts, so this one takes IPv6 visitors too.
+		inputs.convert = data.client.ip;
 
 		const params = page.url.searchParams;
 		const q = params.get('q');
@@ -255,6 +321,7 @@
 		if (tool.id === 'dns' && type && (FORWARD_RECORD_TYPES as readonly string[]).includes(type)) {
 			dnsType = type;
 		}
+		if (tool.id === 'dns') dnsCompare = params.get('resolvers') === 'all';
 		if (q) inputs[tool.id] = q;
 		if (q || tool.requiresInput === false) void run(tool, { updateUrl: false });
 	});
@@ -319,17 +386,53 @@
 			example: '/dns/example.com?type=MX',
 			desc: 'DNS records over DoH; IPs get a reverse (PTR) lookup'
 		},
-		{ path: '/weather', example: '/weather', desc: "weather + alerts at your IP's location" },
+		{
+			path: '/dns/{name}?resolvers=all',
+			example: '/dns/example.com?resolvers=all',
+			desc: 'compare answers across Cloudflare, Google, AdGuard and NextDNS'
+		},
 		{
 			path: '/whois/{ip|domain|asn}',
 			example: '/whois/AS13335',
 			desc: 'registration data via RDAP'
 		},
 		{
+			path: '/bgp/{ip|prefix|asn}',
+			example: '/bgp/AS13335',
+			desc: 'origin AS + RPKI for an IP; prefixes + upstreams for an ASN'
+		},
+		{
 			path: '/cidr/{range}',
 			example: `/cidr/${clientCidr24 ?? '10.0.0.0/24'}`,
 			desc: 'subnet calculator (IPv4 + IPv6)'
 		},
+		{
+			path: '/convert/{ip}',
+			example: `/convert/${clientIpv4 ?? '8.8.8.8'}`,
+			desc: 'decimal, hex, binary and IPv6 forms of an address, plus its scope'
+		},
+		{
+			path: '/mail/{domain}',
+			example: '/mail/example.com',
+			desc: 'MX, SPF, DMARC, DKIM, MTA-STS, TLS-RPT and BIMI, with issues'
+		},
+		{
+			path: '/certs/{domain}',
+			example: '/certs/example.com',
+			desc: 'certificates for a domain + subdomains, from CT logs'
+		},
+		{
+			path: '/http/{url}',
+			example: '/http/example.com',
+			desc: 'redirect chain, headers, timing and security-header audit'
+		},
+		{ path: '/port/{port}', example: '/port/22', desc: 'is this port open on your IP?' },
+		{
+			path: '/mac/{address}',
+			example: '/mac/00:1a:2b:3c:4d:5e',
+			desc: 'MAC vendor lookup (IEEE registry)'
+		},
+		{ path: '/weather', example: '/weather', desc: "weather + alerts at your IP's location" },
 		{ path: '/headers', example: '/headers', desc: 'your request headers, echoed back' },
 		{ path: '/ua', example: '/ua', desc: 'your user agent' },
 		{ path: '/health', example: '/health', desc: 'liveness check' }
@@ -395,8 +498,9 @@
 
 <!-- Tools -->
 <Tabs.Root bind:value={activeTab} onValueChange={onTabChange} class="gap-4">
-	<!-- Each tab's hotkey letter is underlined, menu-accelerator style. -->
-	<Tabs.List class="no-scrollbar w-full justify-start overflow-x-auto overflow-y-hidden border-b">
+	<!-- Each tab's hotkey letter is underlined, menu-accelerator style. The bar
+	     wraps rather than scrolls, so every tool stays visible. -->
+	<Tabs.List class="h-auto w-full flex-wrap justify-start border-b">
 		{#each menu as item (item.id)}
 			{@const at = item.label.indexOf(item.hotkey)}
 			<Tabs.Trigger value={item.id} aria-keyshortcuts={item.hotkey}>
@@ -445,6 +549,22 @@
 						{running[tool.id] ? 'running…' : (tool.requiresInput ?? true) ? 'run' : 'refresh'}
 					</Button>
 				</form>
+
+				{#if tool.hint}
+					<p class="text-muted-foreground text-xs">{tool.hint}</p>
+				{/if}
+				{#if tool.id === 'port'}
+					<p class="text-muted-foreground text-xs">
+						connects back to your IP (<span class="text-foreground">{data.client.ip}</span>) on that
+						port to see if it's reachable from the internet. It can't test anyone else.
+					</p>
+				{/if}
+				{#if tool.id === 'dns'}
+					<label class="text-muted-foreground flex w-fit items-center gap-2 text-xs">
+						<input type="checkbox" bind:checked={dnsCompare} class="accent-primary" />
+						compare answers across Cloudflare, Google, AdGuard and NextDNS
+					</label>
+				{/if}
 
 				{#if tool.id === 'whois'}
 					<!-- Once a real lookup has run, dim the examples so the actual command
