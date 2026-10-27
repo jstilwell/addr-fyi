@@ -120,10 +120,13 @@ export const countSpfLookups = async (
 /** "mode: enforce" from https://mta-sts.<domain>/.well-known/mta-sts.txt. */
 const mtaStsMode = async (fetcher: typeof fetch, domain: string): Promise<string | null> => {
 	try {
+		// RFC 8461 §3.3: policy fetches must not follow redirects. That also
+		// keeps a hostile domain from bouncing this request somewhere else.
 		const response = await fetcher(`https://mta-sts.${domain}/.well-known/mta-sts.txt`, {
+			redirect: 'manual',
 			signal: AbortSignal.timeout(4000)
 		});
-		if (!response.ok) return null;
+		if (response.status !== 200) return null;
 		return (await response.text()).match(/^mode:\s*(\w+)/im)?.[1].toLowerCase() ?? null;
 	} catch {
 		return null;
