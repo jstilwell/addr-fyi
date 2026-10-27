@@ -1,21 +1,8 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<script nonce="%sveltekit.nonce%">
-			// Apply the saved (or system) theme before first paint to avoid a flash.
-			(() => {
-				let saved = null;
-				try {
-					saved = localStorage.getItem('theme');
-				} catch {
-					// Storage blocked (privacy mode, sandboxed frame): fall back to the system theme.
-				}
-				const dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-				if (dark) document.documentElement.classList.add('dark');
-			})();
-		</script>
 		<!-- Cloudflare Web Analytics (cookieless; HTML pages only, never plaintext/JSON) -->
 		<script
 			type="module"

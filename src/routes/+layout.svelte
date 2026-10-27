@@ -3,26 +3,27 @@
 	import { resolve } from '$app/paths';
 	import Coffee from '@lucide/svelte/icons/coffee';
 	import Mail from '@lucide/svelte/icons/mail';
-	import Terminal from '@lucide/svelte/icons/terminal';
-	import ThemeToggle from '#lib/components/ThemeToggle.svelte';
+	import PacketNetwork from '#lib/components/PacketNetwork.svelte';
 	import { site } from '#lib/config/site.js';
 
 	let { children } = $props();
 
 	const year = new Date().getFullYear();
 
-	// Terminal-prompt favicon (">_"), drawn to match the header glyph and the
-	// site's steel-blue accent — a rounded dark tile with a chevron + cursor
-	// bar. Self-contained inline SVG, crisp at any size, no asset file.
+	// Terminal-prompt favicon (">_"): an ember chevron and magenta cursor on a
+	// rounded night-indigo tile. Self-contained inline SVG, crisp at any size,
+	// no asset file.
 	const favicon =
 		'data:image/svg+xml,' +
 		encodeURIComponent(
 			[
 				'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">',
-				'<rect width="100" height="100" rx="22" fill="#1e2430"/>',
-				'<path d="M28 34 L48 50 L28 66" fill="none" stroke="#7aa0e0"',
-				' stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>',
-				'<rect x="54" y="60" width="24" height="8" rx="4" fill="#7aa0e0"/>',
+				'<defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#ff6a3d"/>',
+				'<stop offset="1" stop-color="#e4548c"/></linearGradient></defs>',
+				'<rect width="100" height="100" rx="22" fill="#161329"/>',
+				'<path d="M28 34 L48 50 L28 66" fill="none" stroke="url(#g)" stroke-width="9"',
+				' stroke-linecap="round" stroke-linejoin="round"/>',
+				'<rect x="54" y="60" width="24" height="8" rx="4" fill="#e4548c"/>',
 				'</svg>'
 			].join('')
 		);
@@ -31,27 +32,28 @@
 <svelte:head>
 	<link rel="icon" href={favicon} />
 	<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-	<meta name="theme-color" content="#f7f8fa" media="(prefers-color-scheme: light)" />
-	<meta name="theme-color" content="#25292f" media="(prefers-color-scheme: dark)" />
+	<meta name="theme-color" content="#0c0a1a" />
 </svelte:head>
 
+<!-- Packet network behind the whole page, fixed while content scrolls over it. -->
+<PacketNetwork class="fixed inset-0 -z-10 size-full opacity-40" />
+
 <div class="mx-auto flex min-h-svh w-full max-w-3xl flex-col gap-10 px-4 py-8 sm:px-6 sm:py-12">
-	<header class="flex items-center justify-between">
-		<a
-			href={resolve('/')}
-			class="flex items-center gap-2 text-lg font-bold tracking-tight"
-			aria-label="addr.fyi home"
-		>
-			<Terminal class="text-primary size-5" aria-hidden="true" />
-			<span>addr.fyi</span><span class="cursor-blink text-primary -ml-1">▊</span>
+	<header class="flex items-center justify-between gap-4">
+		<a href={resolve('/')} class="text-lg font-bold tracking-tight" aria-label="addr.fyi home">
+			<span class="text-ansi-magenta" aria-hidden="true">~/</span><span class="text-glow"
+				>addr.fyi</span
+			><span class="cursor-blink text-primary ml-0.5" aria-hidden="true">▊</span>
 		</a>
-		<ThemeToggle />
+		<span class="text-muted-foreground hidden text-sm sm:inline">
+			<span class="text-primary select-none">$</span> curl addr.fyi
+		</span>
 	</header>
 
 	{@render children?.()}
 
 	<footer
-		class="text-muted-foreground mt-auto flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-center text-xs"
+		class="text-muted-foreground mt-auto flex flex-wrap items-center justify-center gap-x-3 gap-y-2 border-t pt-6 text-center text-xs"
 	>
 		<p>
 			Copyright {year}
