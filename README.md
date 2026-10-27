@@ -15,6 +15,8 @@ gets JSON.
 | `/geo`                       | your IP + geolocation, straight from the edge (no lookup)       |
 | `/json`                      | everything we know about you, as JSON                           |
 | `/find/{ip}`                 | geolocation, ISP, ASN, rDNS, proxy/hosting flags for any IP     |
+| `/vpn`                       | are _you_ on a VPN, proxy or Tor? (proxy headers included)      |
+| `/vpn/{ip}`                  | VPN/proxy, Tor exit and datacenter verdict for any IP           |
 | `/dns/{query}?type=MX`       | DNS via DoH — names get records, IPs get a reverse (PTR) lookup |
 | `/dns/{query}?resolvers=all` | the same question to Cloudflare, Google, AdGuard and NextDNS    |
 | `/whois/{query}`             | registration data via RDAP — accepts IP, domain, or ASN         |
@@ -34,6 +36,7 @@ gets JSON.
 ```sh
 curl addr.fyi
 curl addr.fyi/find/128.143.20.111
+curl addr.fyi/vpn
 curl addr.fyi/dns/example.com?type=MX
 curl addr.fyi/whois/AS13335
 curl addr.fyi/cidr/192.168.1.0/26
@@ -45,7 +48,7 @@ curl -H 'Accept: application/json' addr.fyi/geo
 
 The API is versioned with [semver](https://semver.org): every response carries
 an `X-Addr-Version` header, and breaking changes to plaintext output bump the
-major version. The lookup endpoints (`/find`, `/whois`, `/dns`, `/weather`,
+major version. The lookup endpoints (`/find`, `/vpn`, `/whois`, `/dns`, `/weather`,
 `/mail`, `/bgp`, `/certs`, `/http`, `/port`) are rate limited per IP (60
 requests/minute); over the limit you get a `429` with `Retry-After`.
 
@@ -63,6 +66,12 @@ shareable.
   successful results in `caches.default` for 24h (misses for 1h), keeping
   latency low and staying under the upstream rate limit. Weather forecasts are
   cached for 10 minutes per location; NWS alerts are always fetched live.
+- **VPN detection is a verdict, not a fact.** `/vpn` combines ip-api's
+  proxy and hosting flags with the Tor Project's exit list (cached for an
+  hour) and, for your own connection, any `Via`, `Forwarded` or
+  `X-Forwarded-For` header a proxy added (Cloudflare sets none of these).
+  The UI adds browser-only checks: a WebRTC/STUN leak test against
+  `stun.cloudflare.com` and a browser-vs-IP timezone comparison.
 - **DNS uses DoH.** `/dns` queries Cloudflare's `cloudflare-dns.com/dns-query`
   resolver; an IP argument is reversed to a PTR lookup automatically.
 - **WHOIS is RDAP.** `/whois` bootstraps through rdap.org to the authoritative
