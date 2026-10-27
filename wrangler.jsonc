@@ -9,9 +9,9 @@
 		"binding": "ASSETS"
 	},
 	"routes": [{ "pattern": "addr.fyi", "custom_domain": true }],
-	// Per-IP limit on the upstream-backed lookups and probes (/find, /whois,
-	// /dns, /weather, /mail, /bgp, /certs, /http, /port). Counters are per
-	// Cloudflare location and approximate.
+	// Per-IP limit on the upstream-backed lookups and probes (/find, /vpn,
+	// /whois, /dns, /weather, /mail, /bgp, /certs, /http, /port). Counters are
+	// per Cloudflare location and approximate.
 	"ratelimits": [
 		{
 			"name": "LOOKUP_LIMITER",
